@@ -2,31 +2,25 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy
 import statsmodels.api as sm
-import si.siqp.fused_lasso as fused_lasso
-import si.siqp as siqp
-import si.sida.ot as ot
-import si.sida as sida
+import si.qp.fused_lasso as fused_lasso
+import si.qp as qp
+import si.da.ot as ot
+import si.da as da
 import si.util as util
+import os
+from tqdm import tqdm
+from multiprocessing import Pool
 
-def run():
+def run(k):
     # np.random.seed(42)
     # Generate target data
     nt = 20
     delta_t = 4
-    list_change_points = [10, 15]
+    list_change_points = []
     yt, true_yt, Sigma_t = fused_lasso.gen_data(nt, delta_t, list_change_points)
 
-    # plt.figure(figsize=(10, 5))
-    # plt.plot(yt, label="Target Data", linestyle="dotted", marker="o", alpha=0.5)
-    # plt.plot(true_yt, label="Ground Truth", linestyle="dotted", marker="o", alpha=0.5)
-    # plt.xlabel("Index")
-    # plt.ylabel("Value")
-    # plt.legend()
-    # plt.show()
-    # plt.close()
-
     # Generate source data
-    unit = 3
+    unit = 5
     ns = (nt-1) * unit
     scale = 2
     delta_s = scale * delta_t
@@ -55,22 +49,13 @@ def run():
     H = ot.construct_H(ns, nt)
     h = ot.construct_h(ns, nt)
     T, B, Bc = ot.fit(ys, yt, cost, H, h)
+    if len(B)!=ns+nt-1:
+        # print("\nDegenerate!")
+        return None
     Omega = np.hstack((np.zeros((ns + nt, ns)), np.vstack((ns * T, np.identity(nt)))))
     y_tilde = Omega @ y
-    true_y_tilde = Omega @ true_y
 
     sorted_y_tilde = trans_mat @ y_tilde
-    # sorted_true_y_tilde = trans_mat @ true_y_tilde
-
-    # plt.figure(figsize=(10, 5))
-    # plt.plot(sorted_y_tilde, label="Transformed Data", linestyle="dotted", marker="o", alpha=0.5)
-    # plt.plot(sorted_true_y_tilde, label="Ground Truth", linestyle="dotted", marker="o", alpha=0.5)
-    # plt.xlabel("Index")
-    # plt.ylabel("Value")
-    # plt.legend()
-    # plt.show()
-    # plt.close()
-
     Lambda = 2
     # Construct the quadratic program
     D, A, delta, B1, B2 = fused_lasso.util(np.eye(n), sorted_y_tilde, Lambda)
@@ -78,18 +63,10 @@ def run():
     # siqp.check_KKT(eps, u, v, A, delta, B1, B2)
     beta = eps[0:n]
 
-    # plt.figure(figsize=(10, 5))
-    # plt.plot(sorted_y_tilde, label="Transformed Data", linestyle="dotted", marker="o", alpha=0.5)
-    # plt.plot(sorted_true_y_tilde, label="Ground Truth", linestyle="dotted", marker="o", alpha=0.5)
-    # plt.plot(beta, label="Fused Lasso Estimate", color="red", linewidth=2)
-    # plt.xlabel("Index")
-    # plt.ylabel("Value")
-    # plt.legend()
-    # plt.show()
-    # plt.close()
-
     # Find change points
     M = fused_lasso.find_change_points(beta, D)
+    if len(M)==0:
+        return None
     # print("Estimated Change Points:", M)
     M = [0] + M + [n-1]  # Add boundaries to change points
 
@@ -116,26 +93,33 @@ def run():
     etajTSigmaetaj = (etaj.T @ Sigma @ etaj)[0][0]
     tn_sigma = np.sqrt(etajTSigmaetaj)
 
-    # Selective inference
+    # Selective Inference
     a, b = util.compute_a_b(y, etaj)
-    intervals_1 = sida.fit(ns, nt, np.eye(n), y, a, b, c_, H, B, Bc)
-    a_tilde = Omega@a
-    b_tilde = Omega@b
-    interval_2 = siqp.fit(np.eye(n), sorted_y_tilde, trans_mat @ a_tilde, trans_mat @ b_tilde, Lambda, u, v, A, B1, B2)
+    intervals_1 = da.fit(ns, nt, np.eye(n), y, a, b, c_, H, B, Bc)
+    a_tilde = Omega @ a
+    b_tilde = Omega @ b 
+    interval_2 = qp.fit(np.eye(n), sorted_y_tilde, trans_mat @ a_tilde, trans_mat @ b_tilde, Lambda, u, v, A, B1, B2)
     intervals = util.intersect(intervals_1, interval_2)
     p_value = util.p_value(intervals, etajTy, tn_sigma)
+    # with open('./results/p_values.txt', 'a') as f:
+    #     f.write(f"{p_value}\n")
     return p_value
 
 if __name__ == "__main__":
-    # run()
-    max_iter = 1000
+    # run(1)
+    os.environ["MKL_NUM_THREADS"] = "1" 
+    os.environ["NUMEXPR_NUM_THREADS"] = "1" 
+    os.environ["OMP_NUM_THREADS"] = "1" 
+    
+    max_iter = 1200
     alpha = 0.05
-    list_p_values = []
     cnt = 0
-    for i in range(max_iter):
-        print(f"Iteration {i+1}/{max_iter}")
-        np.random.seed(i)
-        p_value = run()
+
+    list_p_values = []
+    with Pool() as pool:
+        list_result = list(tqdm(pool.imap(run, range(max_iter)), total=max_iter, desc="Iter"))
+
+    for p_value in list_result:
         if p_value is None:
             continue
         list_p_values.append(p_value)
@@ -143,6 +127,7 @@ if __name__ == "__main__":
             cnt += 1
 
     plt.hist(list_p_values)
+    plt.savefig('./results/p_value_hist.pdf')
     plt.show()
     plt.close()
 
@@ -152,9 +137,9 @@ if __name__ == "__main__":
     plt.plot([0, 1], [0, 1], 'k--')
     plt.legend()
     plt.tight_layout()
-    # plt.savefig('./results/uniform_pivot.png', dpi=100)
+    plt.savefig('./results/uniform_pivot.pdf')
     plt.show()
     plt.close()
 
-    print("FPR:", cnt / max_iter)
+    print("FPR:", cnt / len(list_p_values))
     print(f'KS-Test result: {scipy.stats.kstest(list_p_values, "uniform")[1]}')

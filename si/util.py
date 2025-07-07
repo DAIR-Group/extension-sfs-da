@@ -1,6 +1,6 @@
 import numpy as np
 from mpmath import mp
-mp.dps = 500
+mp.dps = 1000
 
 def compute_a_b(y, etaj):    
     sq_norm = (np.linalg.norm(etaj))**2
@@ -93,10 +93,6 @@ def solve_quadratic_inequality(a, b, c):
         
 def intersect(list_intervals_1, list_intervals_2):
     results = []
-    
-    if len(list_intervals_1) == 0 or len(list_intervals_2) == 0:
-        return results
-
     for interval_1 in list_intervals_1:
         for interval_2 in list_intervals_2:
             if interval_1[1] < interval_2[0]:
@@ -104,12 +100,12 @@ def intersect(list_intervals_1, list_intervals_2):
             if interval_1[0] > interval_2[1]:
                 continue
             results.append([max(interval_1[0], interval_2[0]), min(interval_1[1], interval_2[1])])
-
+    if len(results) == 0:
+        print('\nintersect: Error no interval')
     return results
 
 def pivot(list_itvs, etajTy, tn_mu, tn_sigma):
     if len(list_itvs) == 0:
-        print('Error no interval')
         return None
 
     list_tn_cdfs = []

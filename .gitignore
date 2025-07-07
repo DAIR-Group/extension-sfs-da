@@ -1,1 +1,7 @@
 run.ipynb
+pot/
+.vscode
+.venv
+results
+__pycache__/
+pot.ipynb

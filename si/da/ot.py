@@ -43,8 +43,8 @@ def construct_h(ns, nt):
     h = h[:-1,:]
     return h
 
-def fit(Ds, Dt, cost, H, h):
+def fit(Ds, Dt, cost, H, h, method='highs'):
     ns, nt = Ds.shape[0], Dt.shape[0]
-    T, B, Bc = lp_solver.solve(cost, H, h)
+    T, B, Bc = lp_solver.solve(cost, H, h, method)
     T = T.reshape(ns, nt)
     return T, B, Bc
