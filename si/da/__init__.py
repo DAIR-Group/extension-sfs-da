@@ -1,9 +1,11 @@
 import numpy as np
 from .. import util
-from . import ot
+from . import otda
 
-def fit(ns, nt, X, y, a, b, c_, H, B, Bc):
-    Theta = ot.construct_Theta(ns, nt)    
+def fit(ns, nt, X, y, a, b, c_, H, B):
+    Bc = list(set(range(ns*nt))-set(B))
+    
+    Theta = otda.construct_Theta(ns, nt)    
     Theta_a = Theta.dot(a)
     Theta_b = Theta.dot(b)
 
@@ -26,7 +28,6 @@ def fit(ns, nt, X, y, a, b, c_, H, B, Bc):
         ta = - p[i][0]
 
         temp = util.solve_quadratic_inequality(fa, sa, ta)
-        
         if flag == False:
             flag = True
             list_intervals = temp

@@ -3,23 +3,33 @@ from .. import util
 
 def check_KKT(eps, u, v, A, delta, B1, B2):
     # Check KKT conditions
-    print("Checking KKT conditions...")
+    # print("Checking KKT conditions...")
     sta = A @ eps + delta + B1.T @ u + B2.T @ v
-    if not np.all(np.round(sta, 9) == 0):
-        print("\tStationarity Condition Failed!")
+    prec = 1e-8
+    if np.any((sta < -prec) | (sta > prec)):
+        print(sta[np.where((sta < -prec) | (sta > prec))[0],:])
+        raise ValueError("Stationarity Condition Failed!")
 
     B1eps = B1 @ eps
     B2eps = B2 @ eps
     uB1eps = u * B1eps
-    if not np.all(np.round(uB1eps, 9) == 0):
-        print("\tComplementary Slackness Failed!")
 
-    if not np.all(np.round(B1eps, 9) <= 0) and not np.all(np.round(B2eps, 9) == 0):
-        print("\tPrimal Feasibility Failed!")
+    if np.any((uB1eps < -prec) | (uB1eps > prec)):
+        print(uB1eps[np.where((uB1eps < -prec) | (uB1eps > prec))[0],:])
+        raise ValueError("Complementary Slackness Failed!")
 
-    if not np.all(np.round(u, 9) >= 0):
-        print("\tDual Feasibility Failed!")
-    print("Finished checking KKT conditions.")
+    if not np.all(B1eps <= prec):
+        print(B1eps[np.where(B1eps > -prec)[0],:])
+        raise ValueError("Primal Feasibility Failed!")
+
+    if np.any((B2eps < -prec) | (B2eps > prec)):
+        print(B2eps[np.where((B2eps < -prec) | (B2eps > prec))[0],:])
+        raise ValueError("Primal Feasibility Failed!")
+
+    if not np.all(u >= -prec):
+        print(u[np.where(u < -prec)[0],:])
+        raise ValueError("Dual Feasibility Failed!")
+    # print("Finished checking KKT conditions.")
 
 def fit(X, y, a, b, Lambda, u, v, A, B1, B2):
     p = y.shape[0]

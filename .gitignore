@@ -2,7 +2,7 @@ run.ipynb
 pot/
 .vscode
 .venv
+linux-venv
 results
-__pycache__/
 pot.ipynb
-debug.txt
+fused_lasso.py

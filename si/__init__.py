@@ -3,7 +3,7 @@ from . import da
 from . import qp
 from . import util
 
-def divide_and_conquer(ns, nt, trans_mat, a, b, Lambda, zmin, zmax, method):
+def divide_and_conquer(ns, nt, trans_mat, a, b, Lambda, zmin, zmax):
     n = ns+nt
     list_intervals = []
     list_M = []
@@ -11,12 +11,13 @@ def divide_and_conquer(ns, nt, trans_mat, a, b, Lambda, zmin, zmax, method):
     while zuv < zmax:
         y_zuv = a+b*zuv
         ys, yt = y_zuv[:ns,:], y_zuv[ns:,:]
-        c_, cost = da.ot.construct_cost(ys, yt)
-        H = da.ot.construct_H(ns, nt)
-        h = da.ot.construct_h(ns, nt)
-        Tu, Bu, Bcu = da.ot.fit(ys, yt, cost, H, h, method)
+        c_, cost = da.otda.construct_cost(ys, yt)
+        H = da.otda.construct_H(ns, nt)
+        h = da.otda.construct_h(ns, nt)
+        Tu, Bu = da.otda.fit(ys, yt, cost, H, h)
+
         Omega_u = np.hstack((np.zeros((ns + nt, ns)), np.vstack((ns * Tu, np.identity(nt)))))
-        interval_u = da.fit(ns, nt, np.eye(n), y_zuv, a, b, c_, H, Bu, Bcu)
+        interval_u = da.fit(ns, nt, np.eye(n), y_zuv, a, b, c_, H, Bu)
 
         # Select the interval containing the data point that we are currently considering.
         for i in interval_u:
@@ -34,21 +35,26 @@ def divide_and_conquer(ns, nt, trans_mat, a, b, Lambda, zmin, zmax, method):
             eps, u, v = qp.fused_lasso.fit(A, delta, B1, B2)
             beta = eps[0:n]
             M_v = qp.fused_lasso.find_change_points(beta, D)
+            
+            if len(M_v)==0:
+                zuv += 5e-4
+                continue
+
             M_v = [0] + M_v + [n-1]
             interval_v = qp.fit(np.eye(n), sorted_y_tilde_u_zuv, trans_mat @ a_tilde, trans_mat @ b_tilde, Lambda, u, v, A, B1, B2)            
             interval_uv = util.intersect(interval_u, interval_v)
-            with open("./debug.txt", "a") as f:
-                f.write(f'{interval_uv}\t\t{zuv}\t\t{M_v}\n')
+            # with open("./debug.txt", "a") as f:
+            #     f.write(f'{interval_uv}\t\t{zuv}\t\t{M_v}\n')
             list_intervals += interval_uv
             list_M += [M_v]
-            zuv = interval_uv[0][1] + 1e-4
+            zuv = interval_uv[0][1] + 5e-5
 
     return list_intervals, list_M
 
-def fit(etaj, ns, nt, ys, yt, Sigma_s, Sigma_t, trans_mat, Lambda, M_obs, zmin=-20, zmax=20, method='highs'):
+def fit(etaj, ns, nt, ys, yt, Sigma_s, Sigma_t, trans_mat, Lambda, M_obs, zmin=-20, zmax=20):
     y = np.vstack((ys, yt))
     a, b = util.compute_a_b(y, etaj)
-    list_intervals, list_M = divide_and_conquer(ys.shape[0], yt.shape[0], trans_mat, a, b, Lambda, zmin, zmax, method)
+    list_intervals, list_M = divide_and_conquer(ys.shape[0], yt.shape[0], trans_mat, a, b, Lambda, zmin, zmax)
 
     Z = []
     for i in range(len(list_intervals)):

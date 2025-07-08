@@ -6,5 +6,5 @@ def solve(A, delta, B1, B2):
     constraints = [B1 @ x <= 0, B2 @ x == 0]
     prob = cp.Problem(objective, constraints)
     prob.solve(solver=cp.OSQP, eps_abs=1e-10, eps_rel=1e-10, verbose=False)
-    # print(x.value)
+    # prob.solve(solver=cp.PROXQP, backend='sparse', eps_abs=1e-10, eps_rel=1e-10, verbose=False)
     return x.value.reshape(-1,1), prob.constraints[0].dual_value.reshape(-1,1), prob.constraints[1].dual_value.reshape(-1,1)

@@ -4,7 +4,7 @@ import scipy
 import statsmodels.api as sm
 import si.qp.fused_lasso as fused_lasso
 import si.qp as qp
-import si.da.ot as ot
+import si.da.otda as otda
 import si.da as da
 import si.util as util
 import os
@@ -12,101 +12,108 @@ from tqdm import tqdm
 from multiprocessing import Pool
 
 def run(k):
-    # np.random.seed(42)
-    # Generate target data
-    nt = 20
-    delta_t = 4
-    list_change_points = []
-    yt, true_yt, Sigma_t = fused_lasso.gen_data(nt, delta_t, list_change_points)
+    try:
+        # Generate target data
+        np.random.seed(k)
+        nt = 20
+        delta_t = 4
+        list_change_points = []
+        yt, true_yt, Sigma_t = fused_lasso.gen_data(nt, delta_t, list_change_points)
 
-    # Generate source data
-    unit = 5
-    ns = (nt-1) * unit
-    scale = 2
-    delta_s = scale * delta_t
-    list_change_points = [i*(unit+1) for i in list_change_points]
-    ys, true_ys, Sigma_s = fused_lasso.gen_data(ns, delta_s, list_change_points)
+        # Generate source data
+        unit = 5
+        ns = (nt-1) * unit
+        scale = 2
+        delta_s = scale * delta_t
+        list_change_points = [i*(unit+1) for i in list_change_points]
+        ys, true_ys, Sigma_s = fused_lasso.gen_data(ns, delta_s, list_change_points)
 
-    n = ns+nt
-    trans_mat = np.zeros((n, n))
+        n = ns+nt
+        trans_mat = np.zeros((n, n))
 
-    for i in range(nt):
-        special_row_idx = i * (unit + 1)
-        trans_mat[special_row_idx, ns + i] = 1
-        if i < nt - 1:
-            row_start = special_row_idx + 1
-            row_end = row_start + unit
-            col_start = i * unit
-            col_end = col_start + unit
-            trans_mat[row_start:row_end, col_start:col_end] = np.eye(unit)
+        for i in range(nt):
+            special_row_idx = i * (unit + 1)
+            trans_mat[special_row_idx, ns + i] = 1
+            if i < nt - 1:
+                row_start = special_row_idx + 1
+                row_end = row_start + unit
+                col_start = i * unit
+                col_end = col_start + unit
+                trans_mat[row_start:row_end, col_start:col_end] = np.eye(unit)
 
-    y = np.vstack((ys, yt))
-    true_y = np.vstack((true_ys, true_yt))
-    Sigma = np.vstack((np.hstack((Sigma_s , np.zeros((ns, nt)))),
-                        np.hstack((np.zeros((nt, ns)), Sigma_t))))
-    # Domain Adaptation
-    c_, cost = ot.construct_cost(ys, yt)
-    H = ot.construct_H(ns, nt)
-    h = ot.construct_h(ns, nt)
-    T, B, Bc = ot.fit(ys, yt, cost, H, h)
-    if len(B)!=ns+nt-1:
-        # print("\nDegenerate!")
-        return None
-    Omega = np.hstack((np.zeros((ns + nt, ns)), np.vstack((ns * T, np.identity(nt)))))
-    y_tilde = Omega @ y
+        y = np.vstack((ys, yt))
+        true_y = np.vstack((true_ys, true_yt))
+        Sigma = np.vstack((np.hstack((Sigma_s , np.zeros((ns, nt)))),
+                            np.hstack((np.zeros((nt, ns)), Sigma_t))))
+        
+        # Domain Adaptation
+        c_, cost = otda.construct_cost(ys, yt)
+        H = otda.construct_H(ns, nt)
+        h = otda.construct_h(ns, nt)
+        T, B = otda.fit(ys, yt, cost, H, h)
 
-    sorted_y_tilde = trans_mat @ y_tilde
-    Lambda = 2
-    # Construct the quadratic program
-    D, A, delta, B1, B2 = fused_lasso.util(np.eye(n), sorted_y_tilde, Lambda)
-    eps, u, v = fused_lasso.fit(A, delta, B1, B2)
-    # siqp.check_KKT(eps, u, v, A, delta, B1, B2)
-    beta = eps[0:n]
+        Omega = np.hstack((np.zeros((ns + nt, ns)), np.vstack((ns * T, np.identity(nt)))))
+        y_tilde = Omega @ y
 
-    # Find change points
-    M = fused_lasso.find_change_points(beta, D)
-    if len(M)==0:
-        return None
-    # print("Estimated Change Points:", M)
-    M = [0] + M + [n-1]  # Add boundaries to change points
+        sorted_y_tilde = trans_mat @ y_tilde
+        Lambda = 2
+        # Construct the quadratic program
+        D, A, delta, B1, B2 = fused_lasso.util(np.eye(n), sorted_y_tilde, Lambda)
+        eps, u, v = fused_lasso.fit(A, delta, B1, B2)
+        # qp.check_KKT(eps, u, v, A, delta, B1, B2)
+        beta = eps[0:n]
 
-    # Hypothesis Testing
-    # Test statistic
-    j = np.random.randint(1, len(M)-1, 1)[0]
-    cp_selected = M[j]
-    # print("Selected Change Point:", cp_selected)
+        # Find change points
+        M = fused_lasso.find_change_points(beta, D)
+        if len(M)==0:
+            return None
+        # print("Estimated Change Points:", M)
+        M = [0] + M + [n-1]  # Add boundaries to change points
 
-    # For FPR tests, we will use the false detected change points
-    if cp_selected in list_change_points:
-        return None 
+        # Hypothesis Testing
+        # Test statistic
+        j = np.random.randint(1, len(M)-1, 1)[0]
+        cp_selected = M[j]
+        # print("Selected Change Point:", cp_selected)
+
+        # For FPR tests, we will use the false detected change points
+        if cp_selected in list_change_points:
+            return None 
+        
+        pre_cp = M[j-1]
+        next_cp = M[j+1]
+        prev_len = cp_selected - pre_cp
+        next_len = next_cp - cp_selected
+
+        etaj = np.zeros(n)
+        etaj[pre_cp:cp_selected] = np.ones(prev_len)/prev_len
+        etaj[cp_selected:next_cp] = - np.ones(next_len)/next_len
+        etaj = etaj.reshape(-1,1)
+        etajTy = np.dot(etaj.T, y)[0][0]
+        etajTSigmaetaj = (etaj.T @ Sigma @ etaj)[0][0]
+        tn_sigma = np.sqrt(etajTSigmaetaj)
+
+        # Selective Inference
+        a, b = util.compute_a_b(y, etaj)
+        intervals_1 = da.fit(ns, nt, np.eye(n), y, a, b, c_, H, B)
+        a_tilde = Omega @ a
+        b_tilde = Omega @ b 
+        interval_2 = qp.fit(np.eye(n), sorted_y_tilde, trans_mat @ a_tilde, trans_mat @ b_tilde, Lambda, u, v, A, B1, B2)
+        intervals = util.intersect(intervals_1, interval_2)
+        p_value = util.p_value(intervals, etajTy, tn_sigma)
+
+        # with open('./results/oc/p_values.txt', 'a') as f:
+        #     f.write(f"{p_value}\n")
+        return p_value
     
-    pre_cp = M[j-1]
-    next_cp = M[j+1]
-    prev_len = cp_selected - pre_cp
-    next_len = next_cp - cp_selected
-
-    etaj = np.zeros(n)
-    etaj[pre_cp:cp_selected] = np.ones(prev_len)/prev_len
-    etaj[cp_selected:next_cp] = - np.ones(next_len)/next_len
-    etaj = etaj.reshape(-1,1)
-    etajTy = np.dot(etaj.T, y)[0][0]
-    etajTSigmaetaj = (etaj.T @ Sigma @ etaj)[0][0]
-    tn_sigma = np.sqrt(etajTSigmaetaj)
-
-    # Selective Inference
-    a, b = util.compute_a_b(y, etaj)
-    intervals_1 = da.fit(ns, nt, np.eye(n), y, a, b, c_, H, B, Bc)
-    a_tilde = Omega @ a
-    b_tilde = Omega @ b 
-    interval_2 = qp.fit(np.eye(n), sorted_y_tilde, trans_mat @ a_tilde, trans_mat @ b_tilde, Lambda, u, v, A, B1, B2)
-    intervals = util.intersect(intervals_1, interval_2)
-    p_value = util.p_value(intervals, etajTy, tn_sigma)
-    # with open('./results/p_values.txt', 'a') as f:
-    #     f.write(f"{p_value}\n")
-    return p_value
+    except Exception as e:
+        print(f"\nError in run({k}): {e}")
+        import traceback
+        traceback.print_exc()
+        return None
 
 if __name__ == "__main__":
-    # run(1)
+    # run(0)
     os.environ["MKL_NUM_THREADS"] = "1" 
     os.environ["NUMEXPR_NUM_THREADS"] = "1" 
     os.environ["OMP_NUM_THREADS"] = "1" 
@@ -117,7 +124,7 @@ if __name__ == "__main__":
 
     list_p_values = []
     with Pool() as pool:
-        list_result = list(tqdm(pool.imap(run, range(max_iter)), total=max_iter, desc="Iter"))
+        list_result = list(tqdm(pool.imap(run, range(max_iter)), total=max_iter, desc="Processing"))
 
     for p_value in list_result:
         if p_value is None:
@@ -127,7 +134,7 @@ if __name__ == "__main__":
             cnt += 1
 
     plt.hist(list_p_values)
-    plt.savefig('./results/p_value_hist.pdf')
+    plt.savefig('./results/oc/p_value_hist.pdf')
     plt.show()
     plt.close()
 
@@ -137,7 +144,7 @@ if __name__ == "__main__":
     plt.plot([0, 1], [0, 1], 'k--')
     plt.legend()
     plt.tight_layout()
-    plt.savefig('./results/uniform_pivot.pdf')
+    plt.savefig('./results/oc/uniform_pivot.pdf')
     plt.show()
     plt.close()
 
