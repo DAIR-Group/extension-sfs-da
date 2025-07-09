@@ -16,8 +16,10 @@ def run(k):
         # Generate target data
         np.random.seed(k)
         nt = 20
-        delta_t = 4
+        delta_t = 2
+        # list_change_points = list(np.arange(2, nt, 2))
         list_change_points = []
+
         yt, true_yt, Sigma_t = fused_lasso.gen_data(nt, delta_t, list_change_points)
 
         # Generate source data
@@ -77,8 +79,12 @@ def run(k):
         # print("Selected Change Point:", cp_selected)
 
         # For FPR tests, we will use the false detected change points
-        if cp_selected in list_change_points:
-            return None 
+        # if cp_selected in list_change_points:
+        #     return None
+
+        # For TPR tests        
+        if cp_selected not in list_change_points:
+            return None
         
         pre_cp = M[j-1]
         next_cp = M[j+1]

@@ -62,8 +62,7 @@ def util(X, Y, Lambda):
     return D, A, delta, B1, B2
 
 def fit(A, delta, B1, B2):
-    eps, u, v = qp_solver.solve(A, delta, B1, B2)
-    return eps, u, v
+    return qp_solver.solve(A, delta, B1, B2)
 
 def find_change_points(beta, D):
     # Find change points from the solution
