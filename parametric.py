@@ -2,10 +2,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy
 import statsmodels.api as sm
-import si.qp.fused_lasso as fused_lasso
-import si.da.otda as otda
+import si2.qp.fused_lasso as fused_lasso
+import si2.da.otda as otda
 import os
-import si
+import si2
 from tqdm import tqdm
 from multiprocessing import Pool
 
@@ -82,7 +82,7 @@ def run(k):
         etaj[cp_selected:next_cp] = - np.ones(next_len)/next_len
         etaj = etaj.reshape(-1,1)
 
-        p_value = si.fit(etaj, ns, nt, ys, yt, Sigma_s, Sigma_t, trans_mat, Lambda, M, zmin=-20, zmax=20)
+        p_value = si2.fit(etaj, ns, nt, ys, yt, Sigma_s, Sigma_t, trans_mat, Lambda, M, zmin=-20, zmax=20)
         with open('./results/parametric/p_values.txt', 'a') as f:
             f.write(f"{p_value}\n")
         return p_value

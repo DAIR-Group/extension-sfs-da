@@ -1,0 +1,149 @@
+from abc import ABC, abstractmethod
+import numpy as np
+from ...utils import solve_linear_inequalities
+import cvxpy as cp
+
+class QuadraticProgramming(ABC):
+    def __init__(self, A, Delta, P, Q, D):
+        '''
+        Initialize the Quadratic Programming model
+        '''
+        self.A = A
+        self.Delta = Delta
+        self.P = P
+        self.Q = Q
+        self.D = D
+        self.m, self.p = self.D.shape
+
+    def solve(self):
+        '''
+        Solve the quadratic programming problem
+        '''
+        x = cp.Variable(self.A.shape[0])
+        objective = cp.Minimize(0.5 * cp.quad_form(x, self.A)  + self.Delta.T @ x)
+        constraints = [self.P @ x <= 0, self.Q @ x == 0]
+        prob = cp.Problem(objective, constraints)
+        prob.solve(solver=cp.OSQP, eps_abs=1e-10, eps_rel=1e-10, verbose=False)
+        self.eps = x.value.reshape(-1,1)
+        self.u = prob.constraints[0].dual_value.reshape(-1,1)
+        self.v = prob.constraints[1].dual_value.reshape(-1,1)
+        return self.eps, self.u, self.v
+
+    def check_KKT(self):
+        ''' 
+        Check KKT conditions
+        '''
+        sta = self.A @ self.eps + self.Delta + self.P.T @ self.u + self.Q.T @ self.v
+        prec = 1e-9
+        if np.any((sta < -prec) | (sta > prec)):
+            print(sta[np.where((sta < -prec) | (sta > prec))[0],:])
+            raise ValueError("Stationarity Condition Failed!")
+
+        Peps = self.P @ self.eps
+        Qeps = self.Q @ self.eps
+        uPeps = self.u * Peps
+
+        if np.any((uPeps < -prec) | (uPeps > prec)):
+            print(uPeps[np.where((uPeps < -prec) | (uPeps > prec))[0],:])
+            raise ValueError("Complementary Slackness Failed!")
+
+        if not np.all(Peps <= prec):
+            print(Peps[np.where(Peps > prec)[0],:])
+            raise ValueError("Primal Feasibility Failed!")
+
+        if np.any((Qeps < -prec) | (Qeps > prec)):
+            print(Qeps[np.where((Qeps < -prec) | (Qeps > prec))[0],:])
+            raise ValueError("Primal Feasibility Failed!")
+
+        if not np.all(self.u >= -prec):
+            print(self.u[np.where(self.u < -prec)[0],:])
+            raise ValueError("Dual Feasibility Failed!")
+
+    @abstractmethod
+    def fit(self):
+        pass
+
+    def si(self, a, b):
+        '''
+        Selective Inference
+        '''
+        # y = a + bz
+        # -delta = g0 + g1z
+        g0 = -np.vstack((-self.X.T @ a, self.Lambda * np.ones((2*self.m, 1))))
+        g1 = -np.vstack((-self.X.T @ b, np.zeros((2*self.m, 1))))
+
+        I = np.where(self.u > 0)[0].tolist()
+        Ic = [i for i in range(len(self.u)) if i not in I]
+        PI = np.copy(self.P[I, :])
+        PIc = np.copy(self.P[Ic, :])
+        mat1 = np.vstack((np.hstack((PIc, np.zeros((len(Ic), len(I))))),       
+                        np.hstack((np.zeros((len(I), self.p+2*self.m)), -np.identity(len(I))))))
+
+        self.mat2 = np.vstack((np.hstack((self.A, PI.T, self.Q.T)), 
+                          np.hstack((PI, np.zeros((len(I), len(I))), np.zeros((len(I), self.m)))), 
+                          np.hstack((self.Q, np.zeros((self.m, len(I)+self.m))))))
+        self.mat2 = np.linalg.inv(self.mat2)
+        red = np.hstack((np.eye(self.p+2*self.m+len(I)), np.zeros((self.p+2*self.m+len(I), self.m))))
+
+        self.vec1 = np.vstack((g0, np.zeros((len(I)+self.m, 1))))
+        self.vec2 = np.vstack((g1, np.zeros((len(I)+self.m, 1))))
+
+        temp = mat1 @ red @ self.mat2
+        p = temp @ self.vec1
+        q = temp @ self.vec2
+
+        # Solve the inequalities: p + qz <= 0
+        return solve_linear_inequalities(p, q)
+
+class FeatureSelectorBase(QuadraticProgramming):
+    def gen_data(n, p, true_beta):
+        '''
+        Generate synthetic data for feature selection
+        '''
+        true_beta = true_beta.reshape(-1, 1)
+        X = np.random.normal(loc=0, scale=1, size=(n, p))
+        mu = X.dot(true_beta)
+        y = mu + np.random.normal(loc=0, scale=1, size=(n, 1))
+        Sigma = np.identity(n)
+        return X, y, mu, Sigma
+
+    def fit(self):
+        self.solve()
+        self.beta = np.copy(self.eps[0:self.p, :])
+        self.active_set = np.where(np.round(self.D @ self.beta, 9) != 0)[0].tolist()
+        return self.active_set
+    
+    def eval(self, X_val, y_val):
+        '''
+        Evaluate the model on validation data
+        '''
+        if len(self.active_set) == 0:
+            return -np.inf
+        
+        X_val_active = X_val[:, self.active_set]
+        y_pred = X_val_active @ self.beta[self.active_set, :]
+        residuals = y_val - y_pred
+        mse = 1/2 * np.mean(residuals**2)
+        return mse
+    
+class ChangePointDetectorBase(QuadraticProgramming):
+    def gen_data(n, delta, list_change_points):
+        true_y = np.zeros(n)
+        sign = 1
+        list_change_points = [(start, end) for start, end in zip(list_change_points[:-1], list_change_points[1:])]
+        for change_point in list_change_points:
+            start = change_point[0]
+            end = change_point[1]
+            true_y[start:end] += sign * delta
+            sign *= -1
+        
+        y = true_y + np.random.normal(0, 1, n)
+        return y.reshape(-1,1), true_y.reshape(-1,1), np.eye(n)
+
+    def fit(self):
+        self.solve()
+        self.beta = np.copy(self.eps[0:self.p])
+        temp = self.D @ self.beta
+        self.change_points = (np.where(np.round(temp, 9) != 0)[0] + 1).tolist()
+        self.change_points = [0] + self.change_points + [self.p - 1]  # Add boundaries to change points
+        return self.change_points

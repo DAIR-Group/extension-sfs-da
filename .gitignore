@@ -1,8 +1,11 @@
 run.ipynb
 pot/
-.vscode
 .venv
-linux-venv
 results
 pot.ipynb
+si_nnls.ipynb
 fused_lasso.py
+si2
+oc.py
+parametric.py
+run_fs.py
