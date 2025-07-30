@@ -1,3 +1,4 @@
+import si
 from si import utils
 from si import OTDA, VanillaLasso, ElasticNet, NNLS
 import numpy as np
@@ -54,12 +55,7 @@ def run(k):
 
         # Selective Inference
         a, b = utils.compute_a_b(y, etaj)
-        intervals_da = da_model.si(a, b)
-
-        a_tilde, b_tilde = Omega @ a, Omega @ b
-        intervals_fs = fs_model.si(a_tilde, b_tilde)
-
-        intervals = utils.intersect(intervals_da, intervals_fs)
+        intervals = si.fit(a, b, fs_model, da_model)
         p_value = utils.p_value(intervals, etajTy, tn_sigma)
         # with open('./results/p_values.txt', 'a') as f:
         #     f.write(f"{p_value}\n")
@@ -69,11 +65,12 @@ def run(k):
         return None
 
 if __name__ == "__main__":
+    # run(0)
     os.environ["MKL_NUM_THREADS"] = "1" 
     os.environ["NUMEXPR_NUM_THREADS"] = "1" 
     os.environ["OMP_NUM_THREADS"] = "1" 
     
-    max_iter = 1200
+    max_iter = 120
     alpha = 0.05
     cnt = 0
 

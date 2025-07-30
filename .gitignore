@@ -1,11 +1,9 @@
-run.ipynb
-pot/
+POT
 .venv
 results
 pot.ipynb
 si_nnls.ipynb
-fused_lasso.py
 si2
-oc.py
-parametric.py
-run_fs.py
+__pycache__
+oc_FS.py
+oc_CP.py

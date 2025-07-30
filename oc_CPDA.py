@@ -16,10 +16,10 @@ def run(k):
         unit = 5
         ns = (nt-1) * unit
         Lambda = 1
-        delta_s, delta_t = 2, 4
+        delta_s, delta_t = 2, 4 
         
-        # list_change_points_t = []
-        list_change_points_t = list(np.arange(2, nt, 2))
+        list_change_points_t = []
+        # list_change_points_t = list(np.arange(2, nt, 2))
         yt, mu_t, Sigma_t = FusedLasso.gen_data(nt, delta_t, list_change_points_t)
         
         list_change_points_s = [i*unit for i in list_change_points_t]
@@ -32,7 +32,7 @@ def run(k):
 
         da_model = OTDA(ys, yt)
         T, _ = da_model.fit()
-        da_model.check_KKT()
+        # da_model.check_KKT()
 
         # Adapt the data
         Omega = np.hstack((np.zeros((ns + nt, ns)), np.vstack((ns * T, np.identity(nt)))))
@@ -56,7 +56,7 @@ def run(k):
 
         cp_model = FusedLasso(sorted_y, Lambda)
         M = cp_model.fit()
-        cp_model.check_KKT()
+        # cp_model.check_KKT()
         
         if len(M)==2:
             return None
@@ -68,12 +68,12 @@ def run(k):
         # print("Selected Change Point:", cp_selected)
 
         # For FPR tests, we will use the false detected change points
-        # if cp_selected in list_change_points:
-        #     return None
+        if cp_selected in list_change_points:
+            return None
 
         # For TPR tests        
-        if cp_selected not in list_change_points:
-            return None
+        # if cp_selected not in list_change_points:
+        #     return None
         
         pre_cp = M[j-1]
         next_cp = M[j+1]
@@ -107,14 +107,11 @@ def run(k):
 
 if __name__ == "__main__":
     # run(0)
-    # max_iter = 120
-    # for i in tqdm(range(max_iter), total=max_iter, desc="Processing"):
-    #     run(i)
     os.environ["MKL_NUM_THREADS"] = "1" 
     os.environ["NUMEXPR_NUM_THREADS"] = "1" 
     os.environ["OMP_NUM_THREADS"] = "1" 
     
-    max_iter = 10000
+    max_iter = 1200
     alpha = 0.05
     cnt = 0
 

@@ -1,6 +1,6 @@
 import numpy as np
 from mpmath import mp
-mp.dps = 1000
+mp.dps = 500
 
 def compute_a_b(y, etaj):    
     sq_norm = (np.linalg.norm(etaj))**2
@@ -19,8 +19,10 @@ def solve_linear_inequalities(p, q):
     for i in range(left.shape[0]):
         l = left[i][0]
         r = right[i][0]
+
         if - 1e-10 <= l <= 1e-10:
             l = 0.0
+
         if l == 0.0:
             continue
         else:
@@ -103,6 +105,8 @@ def pivot(list_itvs, etajTy, tn_mu, tn_sigma):
     if len(list_itvs) == 0:
         return None
     list_tn_cdfs = []
+    # import time
+    # start = time.time()
     for interval in list_itvs:
         temp = mp.ncdf((interval[1] - tn_mu) / tn_sigma) - mp.ncdf((interval[0] - tn_mu) / tn_sigma)
         list_tn_cdfs.append(temp)
@@ -114,6 +118,7 @@ def pivot(list_itvs, etajTy, tn_mu, tn_sigma):
         else:
             numerator += mp.ncdf((etajTy - tn_mu) / tn_sigma) - mp.ncdf((interval[0] - tn_mu) / tn_sigma)
             break
+    # print(time.time()-start)
     denominator = sum(list_tn_cdfs)
     if denominator == 0.0:
         print('Numerical error')

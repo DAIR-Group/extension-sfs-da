@@ -9,13 +9,14 @@ import statsmodels.api as sm
 import scipy.stats
 
 def run(k):
-    # try:
+    try:
         # Generate target data
         np.random.seed(k)
         ns, nt, p = 100, 20, 5
 
-        true_beta = np.full((p, 1), 0.25)
-        list_lambda = np.arange(0.5, 10.5, 0.5)
+        true_beta = np.full((p, 1), 0)
+        # list_lambda = np.arange(0.5, 10.5, 0.5)
+        list_lambda = [2 ** x for x in range(-10, 11)]
 
         Xs, ys, mu_s, Sigma_s = VanillaLasso.gen_data(ns, p, true_beta)
         Xt, yt, mu_t, Sigma_t = VanillaLasso.gen_data(nt, p, true_beta)
@@ -75,12 +76,11 @@ def run(k):
         # with open('./results/p_values.txt', 'a') as f:
         #     f.write(f"{p_value}\n")
         return res
-    # except Exception as e:
-    #     print(f"\nError in run({k}): {e}")
-    #     return None
+    except Exception as e:
+        print(f"\nError in run({k}): {e}")
+        return None
 
 if __name__ == "__main__":
-    # run(40)
     os.environ["MKL_NUM_THREADS"] = "1" 
     os.environ["NUMEXPR_NUM_THREADS"] = "1" 
     os.environ["OMP_NUM_THREADS"] = "1" 

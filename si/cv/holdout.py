@@ -39,7 +39,6 @@ class HoldOutCV():
                 self.best_model = model
 
             self.list_models.append(model)
-
         return self.best_model.Lambda, best_score
 
     def si(self, z, a_train, b_train, a_val, b_val):
@@ -50,18 +49,21 @@ class HoldOutCV():
         intervals_1 = []
         for model in self.list_models:
             temp = model.si(a_train, b_train)
-
+            
             if not flag:
                 flag = True
                 intervals_1 = temp
             else:
                 intervals_1 = intersect(intervals_1, temp)
 
+            # print(model.Lambda, temp, intervals_1)
+
         flag = False
         intervals_2 = []
         p = self.best_model.p
         l0_cv = (self.best_model.mat2 @ self.best_model.vec1)[0:p,:]
         l1_cv = (self.best_model.mat2 @ self.best_model.vec2)[0:p,:]
+        
         X = self.X_val
         Xl0_cv = X @ l0_cv
         Xl1_cv = X @ l1_cv
@@ -95,5 +97,6 @@ class HoldOutCV():
                 intervals_2 = intersect(intervals_2, temp)
 
         # print(z)
+        # print(intervals_1)
         # print(intervals_2)
         return intersect(intervals_1, intervals_2)
