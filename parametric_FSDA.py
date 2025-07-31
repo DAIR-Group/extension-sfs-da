@@ -55,21 +55,23 @@ def run(k):
 
         # Selective Inference
         a, b = utils.compute_a_b(y, etaj)
-        intervals = si.fit(a, b, fs_model, da_model)
+        intervals = si.fit(a, b, fs_model, da_model, zmin=-20*tn_sigma, zmax=20*tn_sigma)
         p_value = utils.p_value(intervals, etajTy, tn_sigma)
-        # with open('./results/p_values.txt', 'a') as f:
-        #     f.write(f"{p_value}\n")
+        with open('./results/parametric/p_values.txt', 'a') as f:
+            f.write(f"{p_value}\n")
+        # print(p_value)
         return p_value
     except Exception as e:
         print(f"\nError in run({k}): {e}")
         return None
 
 if __name__ == "__main__":
-    # run(0)
     os.environ["MKL_NUM_THREADS"] = "1" 
     os.environ["NUMEXPR_NUM_THREADS"] = "1" 
     os.environ["OMP_NUM_THREADS"] = "1" 
     
+    # run(0)
+
     max_iter = 120
     alpha = 0.05
     cnt = 0
@@ -86,8 +88,8 @@ if __name__ == "__main__":
             cnt += 1
 
     plt.hist(list_p_values)
-    # plt.savefig('./results/p_value_hist.pdf')
-    plt.show()
+    plt.savefig('./results/parametric/p_value_hist.pdf')
+    # plt.show()
     plt.close()
 
     plt.rcParams.update({'font.size': 16})
@@ -96,8 +98,8 @@ if __name__ == "__main__":
     plt.plot([0, 1], [0, 1], 'k--')
     plt.legend()
     plt.tight_layout()
-    # plt.savefig('./results/uniform_pivot.pdf')
-    plt.show()
+    plt.savefig('./results/parametric/uniform_pivot.pdf')
+    # plt.show()
     plt.close()
 
     print("FPR:", cnt / len(list_p_values))

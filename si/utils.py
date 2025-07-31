@@ -104,22 +104,19 @@ def intersect(list_intervals_1, list_intervals_2):
 def pivot(list_itvs, etajTy, tn_mu, tn_sigma):
     if len(list_itvs) == 0:
         return None
-    list_tn_cdfs = []
     # import time
     # start = time.time()
-    for interval in list_itvs:
-        temp = mp.ncdf((interval[1] - tn_mu) / tn_sigma) - mp.ncdf((interval[0] - tn_mu) / tn_sigma)
-        list_tn_cdfs.append(temp)
     numerator = 0
+    denominator = 0
     for i in range(len(list_itvs)):
         interval = list_itvs[i]
-        if etajTy > interval[1]:
-            numerator += list_tn_cdfs[i]
-        else:
+        temp = mp.ncdf((interval[1] - tn_mu) / tn_sigma) - mp.ncdf((interval[0] - tn_mu) / tn_sigma)
+        denominator += temp
+        if etajTy >= interval[1]:
+            numerator += temp
+        elif etajTy >= interval[0] and etajTy < interval[1]:
             numerator += mp.ncdf((etajTy - tn_mu) / tn_sigma) - mp.ncdf((interval[0] - tn_mu) / tn_sigma)
-            break
     # print(time.time()-start)
-    denominator = sum(list_tn_cdfs)
     if denominator == 0.0:
         print('Numerical error')
         return None
