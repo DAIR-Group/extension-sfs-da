@@ -1,3 +1,4 @@
+import si
 from si import utils
 from si import OTDA, FusedLasso
 import numpy as np
@@ -91,16 +92,10 @@ def run(k):
 
         # Selective Inference
         a, b = utils.compute_a_b(y, etaj)
-        intervals_da = da_model.si(a, b)
-
-        a_tilde, b_tilde = Omega @ a, Omega @ b
-        a_sorted, b_sorted = trans_mat @ a_tilde, trans_mat @ b_tilde
-        intervals_cp = cp_model.si(a_sorted, b_sorted)
-
-        intervals = utils.intersect(intervals_da, intervals_cp)
+        intervals = si.fit(a, b, cp_model, da_model, zmin=-20*tn_sigma, zmax=20*tn_sigma, cp_mat=trans_mat)
         p_value = utils.p_value(intervals, etajTy, tn_sigma)
-        # with open('./results/p_values.txt', 'a') as f:
-        #     f.write(f"{p_value}\n")
+        # with open('./results/parametric/p_values.txt', 'a') as f:
+            # f.write(f"{p_value}\n")
         return p_value
     except Exception as e:
         print(f"\nError in run({k}): {e}")
@@ -110,8 +105,10 @@ if __name__ == "__main__":
     os.environ["MKL_NUM_THREADS"] = "1" 
     os.environ["NUMEXPR_NUM_THREADS"] = "1" 
     os.environ["OMP_NUM_THREADS"] = "1" 
-    
-    max_iter = 1200
+
+    # run(1)
+
+    max_iter = 120
     alpha = 0.05
     cnt = 0
 

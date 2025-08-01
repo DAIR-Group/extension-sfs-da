@@ -6,7 +6,7 @@ class NNLS(core.FeatureSelectorBase):
     """
     Non-Negative Least Squares feature selector.
     """
-    def __init__(self, X, y):
+    def __init__(self, X, y, **kwargs):
         super().__init__()
 
         self.X = X
@@ -16,3 +16,6 @@ class NNLS(core.FeatureSelectorBase):
         self.A = X.T.dot(X)
         self.Delta = -X.T.dot(y)
         self.P = -np.eye(self.p)
+
+    def get_hyperparams(self):
+        return {}

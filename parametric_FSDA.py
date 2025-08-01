@@ -7,7 +7,7 @@ from tqdm import tqdm
 import os
 from multiprocessing import Pool
 import statsmodels.api as sm
-import scipy.stats
+import scipy.stats 
 
 def run(k):
     try:
@@ -17,8 +17,8 @@ def run(k):
         Lambda = 1
         Gamma = 0.5
         true_beta = np.full((p, 1), 0)
-        Xs, ys, mu_s, Sigma_s = VanillaLasso.gen_data(ns, p, true_beta)
-        Xt, yt, mu_t, Sigma_t = VanillaLasso.gen_data(nt, p, true_beta)
+        Xs, ys, mu_s, Sigma_s = NNLS.gen_data(ns, p, true_beta)
+        Xt, yt, mu_t, Sigma_t = NNLS.gen_data(nt, p, true_beta)
 
         X = np.vstack((Xs, Xt))
         y = np.vstack((ys, yt))
@@ -35,11 +35,12 @@ def run(k):
         X_tilde = Omega @ X
         y_tilde = Omega @ y
 
-        fs_model = VanillaLasso(X_tilde, y_tilde, Lambda)
+        hyperparams = {'Lambda': Lambda, 'Gamma': Gamma}
+        fs_model = NNLS(X_tilde, y_tilde, **hyperparams)
         M = fs_model.fit()
         # fs_model.check_KKT()
         
-        if len(M)==0:
+        if fs_model.is_empty():
             return None
                 
         # Hypothesis Testing
@@ -59,7 +60,6 @@ def run(k):
         p_value = utils.p_value(intervals, etajTy, tn_sigma)
         with open('./results/parametric/p_values.txt', 'a') as f:
             f.write(f"{p_value}\n")
-        # print(p_value)
         return p_value
     except Exception as e:
         print(f"\nError in run({k}): {e}")

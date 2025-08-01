@@ -34,11 +34,12 @@ def run(k):
         X_tilde = Omega @ X
         y_tilde = Omega @ y
 
-        fs_model = VanillaLasso(X_tilde, y_tilde, Lambda)
+        hyperparams = {'Lambda': Lambda, 'Gamma': Gamma}
+        fs_model = VanillaLasso(X_tilde, y_tilde, **hyperparams)
         M = fs_model.fit()
         # fs_model.check_KKT()
         
-        if len(M)==0:
+        if fs_model.is_empty():
             return None
                 
         # Hypothesis Testing

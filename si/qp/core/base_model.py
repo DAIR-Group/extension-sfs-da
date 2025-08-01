@@ -173,6 +173,9 @@ class FeatureSelectorBase(QuadraticProgramming):
         mse = 1/2 * np.mean(residuals**2)
         return mse
     
+    def is_empty(self):
+        return len(self.active_set)==0
+    
 class ChangePointDetectorBase(QuadraticProgramming):
     def gen_data(n, delta, list_change_points):
         true_y = np.zeros(n)
@@ -191,6 +194,9 @@ class ChangePointDetectorBase(QuadraticProgramming):
         self.solve()
         self.beta = np.copy(self.eps[0:self.p])
         temp = self.D @ self.beta
-        self.change_points = (np.where(np.round(temp, 9) != 0)[0] + 1).tolist()
-        self.change_points = [0] + self.change_points + [self.p - 1]  # Add boundaries to change points
-        return self.change_points
+        self.active_set = (np.where(np.round(temp, 9) != 0)[0] + 1).tolist()
+        self.active_set = [0] + self.active_set + [self.p - 1]  # Add boundaries to change points
+        return self.active_set
+    
+    def is_empty(self):
+        return len(self.active_set)==2

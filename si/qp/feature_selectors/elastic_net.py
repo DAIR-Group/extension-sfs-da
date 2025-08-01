@@ -6,23 +6,24 @@ class ElasticNet(core.FeatureSelectorBase):
     """
     Elastic Net feature selector.
     """
-    def __init__(self, X, y, Lambda, Gamma):
+    def __init__(self, X, y, **kwargs):
         super().__init__()
 
-        self.Lambda = Lambda
-        self.Gamma = Gamma
         self.X = X
         self.y = y
-        
+
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
         self.D = np.eye(X.shape[1])
         
         self.m, self.p = self.D.shape 
-        XTX_Gamma = X.T.dot(X) + Gamma * np.eye(self.p)
+        XTX_Gamma = X.T.dot(X) + self.Gamma * np.eye(self.p)
 
         self.A = np.zeros((self.p+2*self.m, self.p+2*self.m))
         self.A[:self.p, :self.p] = XTX_Gamma
 
-        delta1 = Lambda * np.vstack((np.zeros((self.p, 1)), np.ones((2*self.m, 1))))
+        delta1 = self.Lambda * np.vstack((np.zeros((self.p, 1)), np.ones((2*self.m, 1))))
         XTY = X.T.dot(y)
         delta2 = np.vstack((XTY, np.zeros((2*self.m, 1))))
         self.Delta = delta1 - delta2
@@ -32,3 +33,6 @@ class ElasticNet(core.FeatureSelectorBase):
         self.P = np.vstack((row_1, row_2))
 
         self.Q = np.hstack((np.copy(self.D), -np.identity(self.m), np.identity(self.m)))
+
+    def get_hyperparams(self):
+        return {'Lambda': self.Lambda, 'Gamma': self.Gamma}
