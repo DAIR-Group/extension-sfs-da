@@ -46,9 +46,10 @@ def run(k):
         # Test statistic
         j = np.random.randint(0, len(M), 1)[0]
         ej = np.zeros((len(M), 1))
-        ej[j] = 1
-        XM = X[:, M]
-        etaj = XM @ np.linalg.inv(XM.T @ XM) @ ej
+        ej[j][0] = 1
+        XtM = Xt[:, M]
+        Delta = np.hstack((np.zeros((nt, ns)), np.eye(nt)))
+        etaj = Delta.T @ XtM @ np.linalg.inv(XtM.T @ XtM) @ ej
         etajTy = np.dot(etaj.T, y)[0][0]
         etajTSigmaetaj = (etaj.T @ Sigma @ etaj)[0][0]
         tn_sigma = np.sqrt(etajTSigmaetaj)

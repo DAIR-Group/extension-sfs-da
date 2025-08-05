@@ -49,19 +49,19 @@ ns, nt, p = 100, 10, 5
 Lambda = 10
 Gamma = 1
 true_beta = 0
-true_beta_t = np.full((p, 1), true_beta)
 model_name = "OT-VanillaLasso"
 
 def run(args):
-    k = args[0]
+    k = args[0] 
     folder_path = args[1]
     try:
         # Generate target data
         np.random.seed(k)
-        Xs, ys, mu_s, Sigma_s = VanillaLasso.gen_data(ns, p, true_beta_s)
         true_beta_s = np.full((p, 1), 2)
+        Xs, ys, mu_s, Sigma_s = VanillaLasso.gen_data(ns, p, true_beta_s)
+        true_beta_t = np.full((p, 1), true_beta)
         Xt, yt, mu_t, Sigma_t = VanillaLasso.gen_data(nt, p, true_beta_t)
-
+        
         X = np.vstack((Xs, Xt))
         y = np.vstack((ys, yt))
         mu = np.vstack((mu_s, mu_t))
@@ -89,9 +89,10 @@ def run(args):
         # Test statistic
         j = np.random.randint(0, len(M), 1)[0]
         ej = np.zeros((len(M), 1))
-        ej[j] = 1
-        XM = X[:, M]
-        etaj = XM @ np.linalg.inv(XM.T @ XM) @ ej
+        ej[j][0] = 1
+        XtM = Xt[:, M]
+        Delta = np.hstack((np.zeros((nt, ns)), np.eye(nt)))
+        etaj = Delta.T @ XtM @ np.linalg.inv(XtM.T @ XtM) @ ej
         etajTy = np.dot(etaj.T, y)[0][0]
         etajTSigmaetaj = (etaj.T @ Sigma @ etaj)[0][0]
         tn_sigma = np.sqrt(etajTSigmaetaj)
