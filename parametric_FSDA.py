@@ -14,7 +14,7 @@ import re
 ns, nt, p = 100, 10, 5
 Lambda = 10
 Gamma = 1
-true_beta = 1
+true_beta = 0.5
 true_beta_t = np.full((p, 1), true_beta)
 model_name = "OT-NNLS"
 
@@ -64,8 +64,8 @@ def run(k):
         a, b = utils.compute_a_b(y, etaj)
         intervals = si.fit(a, b, fs_model, da_model, zmin=-20*tn_sigma, zmax=20*tn_sigma)
         p_value = utils.p_value(intervals, etajTy, tn_sigma)
-        # with open('./results/parametric/p_values.txt', 'a') as f:
-            # f.write(f"{p_value}\n")
+        with open('./exp/log.txt', 'a') as f:
+            f.write(f"{p_value}\n")
         return p_value
     except Exception as e:
         print(f"\nError in run({k}): {e}")
@@ -119,7 +119,7 @@ if __name__ == "__main__":
     os.environ["NUMEXPR_NUM_THREADS"] = "1" 
     os.environ["OMP_NUM_THREADS"] = "1" 
     
-    max_iter = 1200
+    max_iter = 1000
     alpha = 0.05
     cnt = 0
 
@@ -144,7 +144,8 @@ if __name__ == "__main__":
                      "method": "parametric", "model": model_name, "FPR/TPR": FPR, "KS-Test": ks_test},
         p_values=list_p_values
     )
-
+    with open('./exp/log.txt', 'a') as f:
+            f.write("-" * 40 + "\n")
     plt.hist(list_p_values)
     plt.savefig(folder_path + '/p_value_hist.pdf')
     # plt.show()
