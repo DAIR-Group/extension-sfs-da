@@ -1,6 +1,6 @@
 import si
 from si import utils
-from si import OTDA, VanillaLasso
+from si import OTDA, NNLS
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -11,18 +11,20 @@ import scipy.stats
 import json
 import re
 
-ns, nt, p = 100, 20, 5
-Lambda = 1
-Gamma = 0.5
-true_beta = np.full((p, 1), 0)
-model_name = "OT-VanillaLasso"
+ns, nt, p = 100, 10, 5
+Lambda = 10
+Gamma = 1
+true_beta = 1
+true_beta_t = np.full((p, 1), true_beta)
+model_name = "OT-NNLS"
 
 def run(k):
     try:
         # Generate target data
         np.random.seed(k)
-        Xs, ys, mu_s, Sigma_s = VanillaLasso.gen_data(ns, p, true_beta)
-        Xt, yt, mu_t, Sigma_t = VanillaLasso.gen_data(nt, p, true_beta)
+        Xs, ys, mu_s, Sigma_s = NNLS.gen_data(ns, p, true_beta_t)
+        true_beta_s = np.full((p, 1), 2)
+        Xt, yt, mu_t, Sigma_t = NNLS.gen_data(nt, p, true_beta_s)
 
         X = np.vstack((Xs, Xt))
         y = np.vstack((ys, yt))
@@ -40,7 +42,7 @@ def run(k):
         y_tilde = Omega @ y
 
         hyperparams = {'Lambda': Lambda, 'Gamma': Gamma}
-        fs_model = VanillaLasso(X_tilde, y_tilde, **hyperparams)
+        fs_model = NNLS(X_tilde, y_tilde, **hyperparams)
         M = fs_model.fit()
         # fs_model.check_KKT()
         
@@ -117,7 +119,7 @@ if __name__ == "__main__":
     os.environ["NUMEXPR_NUM_THREADS"] = "1" 
     os.environ["OMP_NUM_THREADS"] = "1" 
     
-    max_iter = 16
+    max_iter = 1200
     alpha = 0.05
     cnt = 0
 
@@ -138,7 +140,7 @@ if __name__ == "__main__":
     print(f'KS-Test: {ks_test}')
 
     folder_path = create_experiment_folder(
-        config_data={"ns": ns, "nt": nt, "p": p, "Lambda": Lambda, "Gamma": Gamma, "true_beta": true_beta.tolist(), 
+        config_data={"ns": ns, "nt": nt, "p": p, "Lambda": Lambda, "Gamma": Gamma, "true_beta": true_beta, 
                      "method": "parametric", "model": model_name, "FPR/TPR": FPR, "KS-Test": ks_test},
         p_values=list_p_values
     )
