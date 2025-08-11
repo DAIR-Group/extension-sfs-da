@@ -1,9 +1,13 @@
+import os
+os.environ["MKL_NUM_THREADS"] = "1" 
+os.environ["NUMEXPR_NUM_THREADS"] = "1" 
+os.environ["OMP_NUM_THREADS"] = "1" 
+
 from si import utils
 from si import OTDA, VanillaLasso, ElasticNet, NNLS
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-import os
 from multiprocessing import Pool
 import statsmodels.api as sm
 import scipy.stats
@@ -70,18 +74,14 @@ def run(k):
         print(f"\nError in run({k}): {e}")
         return None
 
-if __name__ == "__main__":
-    os.environ["MKL_NUM_THREADS"] = "1" 
-    os.environ["NUMEXPR_NUM_THREADS"] = "1" 
-    os.environ["OMP_NUM_THREADS"] = "1" 
-    
+if __name__ == "__main__":    
     max_iter = 1200
     alpha = 0.05
     cnt = 0
 
     list_p_values = []
-    with Pool() as pool:
-        list_result = list(tqdm(pool.imap(run, range(max_iter)), total=max_iter, desc="Iter"))
+    with Pool(processes=8) as pool:
+        list_result = list(tqdm(pool.imap_unordered(run, range(max_iter)), total=max_iter, desc="Iter"))
 
     for p_value in list_result:
         if p_value is None:

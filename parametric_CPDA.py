@@ -1,14 +1,16 @@
+import os
+os.environ["MKL_NUM_THREADS"] = "1" 
+os.environ["NUMEXPR_NUM_THREADS"] = "1" 
+os.environ["OMP_NUM_THREADS"] = "1" 
+
 import si
-from si import utils
-from si import OTDA, FusedLasso
+from si import utils, OTDA, FusedLasso
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-import os
 from multiprocessing import Pool
 import statsmodels.api as sm
 import scipy.stats
-
 import json
 import re
 
@@ -148,10 +150,6 @@ def run(args):
         return None
 
 if __name__ == "__main__":
-    os.environ["MKL_NUM_THREADS"] = "1" 
-    os.environ["NUMEXPR_NUM_THREADS"] = "1" 
-    os.environ["OMP_NUM_THREADS"] = "1" 
-
     folder_path = create_experiment_folder(
         config_data={"nt": nt, "unit": unit, "Lambda": Lambda, "delta": delta, 
                      "method": "parametric", "model": model_name}

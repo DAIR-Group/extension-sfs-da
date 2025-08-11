@@ -1,9 +1,13 @@
+import os
+os.environ["MKL_NUM_THREADS"] = "1" 
+os.environ["NUMEXPR_NUM_THREADS"] = "1" 
+os.environ["OMP_NUM_THREADS"] = "1" 
+
 from si import utils
 from si import OTDA, FusedLasso
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-import os
 from multiprocessing import Pool
 import statsmodels.api as sm
 import scipy.stats
@@ -107,10 +111,6 @@ def run(k):
         return None
 
 if __name__ == "__main__":
-    os.environ["MKL_NUM_THREADS"] = "1" 
-    os.environ["NUMEXPR_NUM_THREADS"] = "1" 
-    os.environ["OMP_NUM_THREADS"] = "1" 
-    
     max_iter = 1200
     alpha = 0.05
     cnt = 0

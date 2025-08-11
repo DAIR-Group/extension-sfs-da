@@ -1,10 +1,13 @@
+import os
+os.environ["MKL_NUM_THREADS"] = "1" 
+os.environ["NUMEXPR_NUM_THREADS"] = "1" 
+os.environ["OMP_NUM_THREADS"] = "1" 
+
 import si
-from si import utils
-from si import OTDA, NNLS
+from si import utils, OTDA, NNLS
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-import os
 from multiprocessing import Pool
 import statsmodels.api as sm
 import scipy.stats 
@@ -109,10 +112,6 @@ def run(args):
         return None
 
 if __name__ == "__main__":
-    os.environ["MKL_NUM_THREADS"] = "1" 
-    os.environ["NUMEXPR_NUM_THREADS"] = "1" 
-    os.environ["OMP_NUM_THREADS"] = "1" 
-    
     folder_path = create_experiment_folder(
         config_data={"ns": ns, "nt": nt, "p": p, "Lambda": Lambda, "Gamma": Gamma, "true_beta": true_beta, 
                      "method": "parametric", "model": model_name}

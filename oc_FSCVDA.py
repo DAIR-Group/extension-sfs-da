@@ -1,9 +1,12 @@
-from si.utils import *
-from si import OTDA, HoldOutCV,VanillaLasso, ElasticNet, NNLS
+import os
+os.environ["MKL_NUM_THREADS"] = "1" 
+os.environ["NUMEXPR_NUM_THREADS"] = "1" 
+os.environ["OMP_NUM_THREADS"] = "1" 
+
+from si import utils, OTDA, HoldOutCV, VanillaLasso
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-import os
 from multiprocessing import Pool
 import statsmodels.api as sm
 import scipy.stats
@@ -61,7 +64,7 @@ def run(k):
         tn_sigma = np.sqrt(etajTSigmaetaj)
 
         # Selective Inference
-        a, b = compute_a_b(y, etaj)
+        a, b = utils.compute_a_b(y, etaj)
         intervals_da = da_model.si(a, b)
 
         a_tilde, b_tilde = Omega @ a, Omega @ b
@@ -71,7 +74,7 @@ def run(k):
 
         intervals_fs = fs_model.si(a_tilde, b_tilde)
 
-        intervals = intersect(intersect(intervals_da, intervals_cv), intervals_fs)
+        intervals = utils.intersect(utils.intersect(intervals_da, intervals_cv), intervals_fs)
         # print(intervals_da, intervals_cv, intervals_fs)
         res = p_value(intervals, etajTy, tn_sigma)
         # with open('./results/p_values.txt', 'a') as f:
