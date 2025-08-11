@@ -1,6 +1,6 @@
 import si
 from si import utils
-from si import OTDA, VanillaLasso
+from si import OTDA, NNLS
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -48,8 +48,8 @@ def create_experiment_folder(base_dir="exp", config_data=None):
 ns, nt, p = 100, 10, 5
 Lambda = 10
 Gamma = 1
-true_beta = 0
-model_name = "OT-VanillaLasso"
+true_beta = 1
+model_name = "OT-NNLS"
 
 def run(args):
     k = args[0] 
@@ -58,9 +58,9 @@ def run(args):
         # Generate target data
         np.random.seed(k)
         true_beta_s = np.full((p, 1), 2)
-        Xs, ys, mu_s, Sigma_s = VanillaLasso.gen_data(ns, p, true_beta_s)
+        Xs, ys, mu_s, Sigma_s = NNLS.gen_data(ns, p, true_beta_s)
         true_beta_t = np.full((p, 1), true_beta)
-        Xt, yt, mu_t, Sigma_t = VanillaLasso.gen_data(nt, p, true_beta_t)
+        Xt, yt, mu_t, Sigma_t = NNLS.gen_data(nt, p, true_beta_t)
         
         X = np.vstack((Xs, Xt))
         y = np.vstack((ys, yt))
@@ -78,7 +78,7 @@ def run(args):
         y_tilde = Omega @ y
 
         hyperparams = {'Lambda': Lambda, 'Gamma': Gamma}
-        fs_model = VanillaLasso(X_tilde, y_tilde, **hyperparams)
+        fs_model = NNLS(X_tilde, y_tilde, **hyperparams)
         M = fs_model.fit()
         # fs_model.check_KKT()
 
@@ -118,13 +118,13 @@ if __name__ == "__main__":
                      "method": "parametric", "model": model_name}
     )
 
-    max_iter = 1000
+    max_iter = 120
     alpha = 0.05
     cnt = 0
 
     args = [[i, folder_path] for i in range(max_iter)]
     list_p_values = []
-    with Pool(processes=10) as pool:
+    with Pool() as pool:
         list_result = list(tqdm(pool.imap_unordered(run, args), total=max_iter, desc="Iter"))
 
     for p_value in list_result:

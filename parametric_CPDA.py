@@ -9,21 +9,67 @@ from multiprocessing import Pool
 import statsmodels.api as sm
 import scipy.stats
 
-def run(k):
+import json
+import re
+
+def get_next_id(base_dir="exp"):
+    """
+    Determine the next available experiment ID by checking existing directories.
+    """
+    if not os.path.exists(base_dir):
+        return 1
+
+    existing = [
+        int(match.group(1)) for name in os.listdir(base_dir)
+        if (match := re.match(r"exp_(\d+)", name)) and os.path.isdir(os.path.join(base_dir, name))
+    ]
+    return max(existing, default=0) + 1
+
+def create_experiment_folder(base_dir="exp", config_data=None):
+    """
+    Automatically create the next experiment folder with custom config.
+
+    Parameters:
+        base_dir (str): The base directory for experiments.
+        config_data (dict): JSON serializable data for config.json.
+    """
+    os.makedirs(base_dir, exist_ok=True)
+    exp_id = get_next_id(base_dir)
+    exp_dir = os.path.join(base_dir, f"exp_{exp_id}")
+    os.makedirs(exp_dir, exist_ok=True)
+
+    # Write config.json
+    config_path = os.path.join(exp_dir, "config.json")
+    with open(config_path, "w") as f:
+        json.dump(config_data or {}, f, indent=4)
+
+    print(f"Created experiment folder: {exp_dir}")
+    return exp_dir
+
+nt = 10
+unit = 10
+Lambda = 10
+delta = 0.5
+model_name = "OT-FusedLasso"
+
+def run(args):
+    k = args[0] 
+    folder_path = args[1]
     try:
         # Generate target data
         np.random.seed(k)
-        nt = 20
-        unit = 5
+        nt = 10
+        unit = 10
         ns = (nt-1) * unit
-        Lambda = 1
-        delta_s, delta_t = 2, 4 
+        Lambda = 1 
         
-        list_change_points_t = []
-        # list_change_points_t = list(np.arange(2, nt, 2))
+        # list_change_points_t = []
+        list_change_points_t = list(np.arange(2, nt, 2))
+        delta_t = delta
         yt, mu_t, Sigma_t = FusedLasso.gen_data(nt, delta_t, list_change_points_t)
         
         list_change_points_s = [i*unit for i in list_change_points_t]
+        delta_s = 2
         ys, mu_s, Sigma_s = FusedLasso.gen_data(ns, delta_s, list_change_points_s)
 
         y = np.vstack((ys, yt))
@@ -70,12 +116,12 @@ def run(k):
         # print("Selected Change Point:", cp_selected)
 
         # For FPR tests, we will use the false detected change points
-        if cp_selected in list_change_points:
-            return None
-
-        # For TPR tests        
-        # if cp_selected not in list_change_points:
-        #     return None
+        if len(list_change_points_t)==0:
+            if cp_selected in list_change_points:
+                return None
+        else:        
+            if cp_selected not in list_change_points:
+                return None
         
         pre_cp = M[j-1]
         next_cp = M[j+1]
@@ -94,8 +140,8 @@ def run(k):
         a, b = utils.compute_a_b(y, etaj)
         intervals = si.fit(a, b, cp_model, da_model, zmin=-20*tn_sigma, zmax=20*tn_sigma, cp_mat=trans_mat)
         p_value = utils.p_value(intervals, etajTy, tn_sigma)
-        # with open('./results/parametric/p_values.txt', 'a') as f:
-            # f.write(f"{p_value}\n")
+        with open(folder_path + '/p_values.txt', 'a') as f:
+            f.write(f"{p_value}\n")
         return p_value
     except Exception as e:
         print(f"\nError in run({k}): {e}")
@@ -106,15 +152,19 @@ if __name__ == "__main__":
     os.environ["NUMEXPR_NUM_THREADS"] = "1" 
     os.environ["OMP_NUM_THREADS"] = "1" 
 
-    # run(1)
+    folder_path = create_experiment_folder(
+        config_data={"nt": nt, "unit": unit, "Lambda": Lambda, "delta": delta, 
+                     "method": "parametric", "model": model_name}
+    )
 
     max_iter = 120
     alpha = 0.05
     cnt = 0
 
+    args = [[i, folder_path] for i in range(max_iter)]
     list_p_values = []
     with Pool() as pool:
-        list_result = list(tqdm(pool.imap(run, range(max_iter)), total=max_iter, desc="Iter"))
+        list_result = list(tqdm(pool.imap_unordered(run, args), total=max_iter, desc="Iter"))
 
     for p_value in list_result:
         if p_value is None:
@@ -123,20 +173,15 @@ if __name__ == "__main__":
         if p_value <= alpha:
             cnt += 1
 
+    FPR = cnt / len(list_p_values)
+    print("FPR/TPR:", FPR)
+    ks_test = scipy.stats.kstest(list_p_values, "uniform")[1]
+    print(f'KS-Test: {ks_test}')
+
+    with open(folder_path+'/metrics.txt', 'w') as f:
+        f.write(f"FPR/TPR: \t{FPR}\nKS-Test: \t{ks_test}")
+
     plt.hist(list_p_values)
-    # plt.savefig('./results/p_value_hist.pdf')
-    plt.show()
+    plt.savefig(folder_path + '/p_value_hist.pdf')
+    # plt.show()
     plt.close()
-
-    plt.rcParams.update({'font.size': 16})
-    grid = np.linspace(0, 1, 101)
-    plt.plot(grid, sm.distributions.ECDF(np.array(list_p_values))(grid), 'r-', linewidth=5, label='p-value')
-    plt.plot([0, 1], [0, 1], 'k--')
-    plt.legend()
-    plt.tight_layout()
-    # plt.savefig('./results/uniform_pivot.pdf')
-    plt.show()
-    plt.close()
-
-    print("FPR:", cnt / len(list_p_values))
-    print(f'KS-Test result: {scipy.stats.kstest(list_p_values, "uniform")[1]}')
