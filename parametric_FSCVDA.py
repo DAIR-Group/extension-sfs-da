@@ -4,16 +4,15 @@ os.environ["NUMEXPR_NUM_THREADS"] = "1"
 os.environ["OMP_NUM_THREADS"] = "1" 
 
 import si
-from si import utils, OTDA, FusedLasso
+from si import utils, OTDA, HoldOutCV, VanillaLasso
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+from multiprocessing import Pool
 import statsmodels.api as sm
-import scipy.stats
+import scipy.stats 
 import json
 import re
-
-from multiprocessing import Pool
 
 def get_next_id(base_dir="exp"):
     """
@@ -49,11 +48,11 @@ def create_experiment_folder(base_dir="exp", config_data=None):
     print(f"Created experiment folder: {exp_dir}")
     return exp_dir
 
-nt = 10
-unit = 10
-Lambda = 10
-delta = 0
-model_name = "OT-FusedLasso"
+ns, nt, p = 100, 10, 5
+Lambda = [2 ** x for x in range(-10, 11)]
+Gamma = 1
+true_beta = 0
+model_name = "OT-HoldOutCV-VanillaLasso"
 
 def run(args):
     k = args[0] 
@@ -61,84 +60,55 @@ def run(args):
     try:
         # Generate target data
         np.random.seed(k)
-        nt = 10
-        unit = 10
-        ns = (nt-1) * unit 
+        true_beta_s = np.full((p, 1), 2)
+        Xs, ys, mu_s, Sigma_s = VanillaLasso.gen_data(ns, p, true_beta_s)
+        true_beta_t = np.full((p, 1), true_beta)
+        Xt, yt, mu_t, Sigma_t = VanillaLasso.gen_data(nt, p, true_beta_t)
         
-        list_change_points_t = [1, 3, 5, 7, 9]
-        delta_t = delta
-        yt, mu_t, Sigma_t = FusedLasso.gen_data(nt, delta_t, list_change_points_t)
-        
-        list_change_points_s = [i*unit for i in list_change_points_t]
-        delta_s = 2
-        ys, mu_s, Sigma_s = FusedLasso.gen_data(ns, delta_s, list_change_points_s)
-
+        X = np.vstack((Xs, Xt))
         y = np.vstack((ys, yt))
         mu = np.vstack((mu_s, mu_t))
         Sigma = np.vstack((np.hstack((Sigma_s , np.zeros((ns, nt)))),
                             np.hstack((np.zeros((nt, ns)), Sigma_t))))
 
-        da_model = OTDA(ys, yt)
+        da_model = OTDA(np.hstack((Xs, ys)), np.hstack((Xt, yt)))
         T, _ = da_model.fit()
         # da_model.check_KKT()
 
         # Adapt the data
         Omega = np.hstack((np.zeros((ns + nt, ns)), np.vstack((ns * T, np.identity(nt)))))
+        X_tilde = Omega @ X
         y_tilde = Omega @ y
 
-        n = ns+nt
-        trans_mat = np.zeros((n, n))
-
-        for i in range(nt):
-            special_row_idx = i * (unit + 1)
-            trans_mat[special_row_idx, ns + i] = 1
-            if i < nt - 1:
-                row_start = special_row_idx + 1
-                row_end = row_start + unit
-                col_start = i * unit
-                col_end = col_start + unit
-                trans_mat[row_start:row_end, col_start:col_end] = np.eye(unit)
-
-        sorted_y = trans_mat @ y_tilde
-
-        hyperparams = {'Lambda': Lambda}
-        cp_model = FusedLasso(sorted_y, **hyperparams)
-        M = cp_model.fit()
-        # cp_model.check_KKT()
+        # Tuning Lambda
+        cv_model = HoldOutCV(val_size=0.3, random_state=k)
+        cv_model.split(ns+nt)
+        list_lambda = Lambda
+        best_Lambda, _ = cv_model.fit(X_tilde, y_tilde, VanillaLasso, list_lambda)
         
-        if cp_model.is_empty():
+        hyperparams = {'Lambda': best_Lambda, 'Gamma': Gamma}
+        fs_model = VanillaLasso(X_tilde, y_tilde, **hyperparams)
+        M = fs_model.fit()
+        # fs_model.check_KKT()
+
+        if fs_model.is_empty():
             return None
-        
-        Mt = list(dict.fromkeys(i // (unit + 1) for i in M[1:-1]))
-        Mt = [0] + Mt + [nt-1] # Add boundaries to change points
-
+                
         # Hypothesis Testing
         # Test statistic
-        j = np.random.randint(1, len(Mt)-1, 1)[0]
-        cp_selected = Mt[j]
-        # print("Selected Change Point:", cp_selected)
-
-        # For FPR tests, we will use the false detected change points
-        if delta != 0 and  cp_selected not in list_change_points_t:
-            return None
-        
-        pre_cp = Mt[j-1]
-        next_cp = Mt[j+1]
-        prev_len = cp_selected - pre_cp
-        next_len = next_cp - cp_selected
-        etaj = np.zeros(n)        
-        etaj[(pre_cp+ns):(cp_selected+ns)] = np.ones(prev_len)/prev_len
-        etaj[(cp_selected+ns):(next_cp+ns)] = -np.ones(next_len)/next_len
-        etaj = etaj.reshape(-1,1)
+        j = np.random.randint(0, len(M), 1)[0]
+        ej = np.zeros((len(M), 1))
+        ej[j][0] = 1
+        XtM = Xt[:, M]
+        Delta = np.hstack((np.zeros((nt, ns)), np.eye(nt)))
+        etaj = Delta.T @ XtM @ np.linalg.inv(XtM.T @ XtM) @ ej
         etajTy = np.dot(etaj.T, y)[0][0]
         etajTSigmaetaj = (etaj.T @ Sigma @ etaj)[0][0]
         tn_sigma = np.sqrt(etajTSigmaetaj)
 
         # Selective Inference
-        a, b = utils.compute_a_b(y, etaj)      
-        min_condition = [pre_cp, cp_selected, next_cp]
-        intervals = si.fit(a, b, cp_model, da_ins=da_model, zmin=-20*tn_sigma, zmax=20*tn_sigma, 
-                           min_condition = min_condition, unit=unit, cp_mat=trans_mat)
+        a, b = utils.compute_a_b(y, etaj)
+        intervals = si.fit(a, b, fs_model, cv_ins=cv_model, da_ins=da_model, zmin=-20*tn_sigma, zmax=20*tn_sigma)
         p_value = utils.p_value(intervals, etajTy, tn_sigma)
         with open(folder_path + '/p_values.txt', 'a') as f:
             f.write(f"{p_value}\n")
@@ -149,11 +119,11 @@ def run(args):
 
 if __name__ == "__main__":
     folder_path = create_experiment_folder(
-        config_data={"nt": nt, "unit": unit, "Lambda": Lambda, "delta": delta, 
+        config_data={"ns": ns, "nt": nt, "p": p, "Lambda": Lambda, "Gamma": Gamma, "true_beta": true_beta, 
                      "method": "parametric", "model": model_name}
     )
 
-    max_iter = 1200
+    max_iter = 120
     alpha = 0.05
     cnt = 0
 

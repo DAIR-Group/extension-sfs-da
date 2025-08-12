@@ -2,28 +2,31 @@ import numpy as np
 from ..utils import solve_quadratic_inequality, intersect
 
 class HoldOutCV():
-    def __init__(self, val_size=0.3, random_state=None):
+    def __init__(self, val_size=0.3, train_indices=None, val_indices=None, random_state=None):
         self.val_size = val_size
+        self.train_indices = train_indices
+        self.val_indices = val_indices
         self.random_state = random_state
 
-    def split(self, X, y):
+    def split(self, n):
         if self.random_state is not None:
             np.random.seed(self.random_state)
         
-        n_samples = X.shape[0]
+        n_samples = n
         indices = np.arange(n_samples)
         np.random.shuffle(indices)
         split_index = int(n_samples * (1 - self.val_size))
-        train_indices = indices[:split_index]
-        val_indices = indices[split_index:]
+        self.train_indices = indices[:split_index]
+        self.val_indices = indices[split_index:]
 
-        if len(train_indices) == 0 or len(val_indices) == 0:
+        if len(self.train_indices) == 0 or len(self.val_indices) == 0:
             raise ValueError("Not enough samples to split into training and validation sets.")
         
-        return train_indices, val_indices
+        return self.train_indices, self.val_indices
     
-    def fit(self, X_train, y_train, X_val, y_val, model_class, list_lambda):
-        self.X_val = X_val
+    def fit(self, X, y, model_class, list_lambda):
+        self.X_train, self.y_train = X[self.train_indices, :], y[self.train_indices, :]
+        self.X_val, self.y_val = X[self.val_indices, :], y[self.val_indices, :]
 
         best_score = np.inf
         self.best_model = None
@@ -31,9 +34,9 @@ class HoldOutCV():
         self.list_models = []
         
         for lam in self.list_lambda:
-            model = model_class(X_train, y_train, Lambda=lam)
+            model = model_class(self.X_train, self.y_train, Lambda=lam)
             model.fit()
-            val_score = model.eval(X_val, y_val)
+            val_score = model.eval(self.X_val, self.y_val)
             if val_score < best_score:
                 best_score = val_score
                 self.best_model = model
@@ -41,10 +44,13 @@ class HoldOutCV():
             self.list_models.append(model)
         return self.best_model.Lambda, best_score
 
-    def si(self, z, a_train, b_train, a_val, b_val):
+    def si(self, a, b):
         """
         Selective Inference
         """
+        a_train, b_train = a[self.train_indices,:], b[self.train_indices,:]
+        a_val, b_val = a[self.val_indices,:], b[self.val_indices,:]
+        
         flag = False
         intervals_1 = []
         for model in self.list_models:
@@ -96,7 +102,4 @@ class HoldOutCV():
             else:
                 intervals_2 = intersect(intervals_2, temp)
 
-        # print(z)
-        # print(intervals_1)
-        # print(intervals_2)
         return intersect(intervals_1, intervals_2)

@@ -41,10 +41,11 @@ def run(k):
         
         # Tuning Lambda
         cv = HoldOutCV(val_size=0.3, random_state=k)
-        train_indices, val_indices = cv.split(X_tilde, y_tilde)
-        X_train, y_train, X_val, y_val = X_tilde[train_indices, :], y_tilde[train_indices, :], X_tilde[val_indices, :], y_tilde[val_indices, :]
-        best_Lambda, _ = cv.fit(X_train, y_train, X_val, y_val, VanillaLasso, list_lambda)
-        fs_model = VanillaLasso(X_tilde, y_tilde, best_Lambda)
+        cv.split(ns+nt)
+        best_Lambda, _ = cv.fit(X_tilde, y_tilde, VanillaLasso, list_lambda)
+        Gamma = 1
+        hyperparams = {'Lambda': best_Lambda, 'Gamma': Gamma}
+        fs_model = VanillaLasso(X_tilde, y_tilde, **hyperparams)
         M = fs_model.fit()
         # fs_model.check_KKT()
         
@@ -69,14 +70,13 @@ def run(k):
 
         a_tilde, b_tilde = Omega @ a, Omega @ b
 
-        intervals_cv = cv.si(etajTy, a_tilde[train_indices,:], b_tilde[train_indices,:],
-                             a_tilde[val_indices,:], b_tilde[val_indices,:])
+        intervals_cv = cv.si(a_tilde, b_tilde)
 
         intervals_fs = fs_model.si(a_tilde, b_tilde)
 
         intervals = utils.intersect(utils.intersect(intervals_da, intervals_cv), intervals_fs)
         # print(intervals_da, intervals_cv, intervals_fs)
-        res = p_value(intervals, etajTy, tn_sigma)
+        res = utils.p_value(intervals, etajTy, tn_sigma)
         # with open('./results/p_values.txt', 'a') as f:
         #     f.write(f"{p_value}\n")
         return res
@@ -85,10 +85,6 @@ def run(k):
         return None
 
 if __name__ == "__main__":
-    os.environ["MKL_NUM_THREADS"] = "1" 
-    os.environ["NUMEXPR_NUM_THREADS"] = "1" 
-    os.environ["OMP_NUM_THREADS"] = "1" 
-    
     max_iter = 1200
     alpha = 0.05
     cnt = 0

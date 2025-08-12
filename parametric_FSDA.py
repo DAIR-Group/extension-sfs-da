@@ -102,7 +102,7 @@ def run(args):
 
         # Selective Inference
         a, b = utils.compute_a_b(y, etaj)
-        intervals = si.fit(a, b, fs_model, da_model, zmin=-20*tn_sigma, zmax=20*tn_sigma)
+        intervals = si.fit(a, b, fs_model, da_ins=da_model, zmin=-20*tn_sigma, zmax=20*tn_sigma)
         p_value = utils.p_value(intervals, etajTy, tn_sigma)
         with open(folder_path + '/p_values.txt', 'a') as f:
             f.write(f"{p_value}\n")
