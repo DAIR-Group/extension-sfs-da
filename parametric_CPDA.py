@@ -8,11 +8,12 @@ from si import utils, OTDA, FusedLasso
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-from multiprocessing import Pool
 import statsmodels.api as sm
 import scipy.stats
 import json
 import re
+
+from multiprocessing import Pool
 
 def get_next_id(base_dir="exp"):
     """
@@ -51,7 +52,7 @@ def create_experiment_folder(base_dir="exp", config_data=None):
 nt = 10
 unit = 10
 Lambda = 10
-delta = 0.5
+delta = 4
 model_name = "OT-FusedLasso"
 
 def run(args):
@@ -65,7 +66,6 @@ def run(args):
         ns = (nt-1) * unit
         Lambda = 1 
         
-        # list_change_points_t = []
         list_change_points_t = list(np.arange(2, nt, 2))
         delta_t = delta
         yt, mu_t, Sigma_t = FusedLasso.gen_data(nt, delta_t, list_change_points_t)
@@ -111,36 +111,35 @@ def run(args):
         if cp_model.is_empty():
             return None
                 
+        Mt = list(set([i // (unit+1) for i in M]))
         # Hypothesis Testing
         # Test statistic
-        j = np.random.randint(1, len(M)-1, 1)[0]
-        cp_selected = M[j]
+        j = np.random.randint(1, len(Mt)-1, 1)[0]
+        cp_selected = Mt[j]
         # print("Selected Change Point:", cp_selected)
 
         # For FPR tests, we will use the false detected change points
-        if len(list_change_points_t)==0:
-            if cp_selected in list_change_points:
-                return None
-        else:        
-            if cp_selected not in list_change_points:
-                return None
+        if delta == 0 and cp_selected in list_change_points_t:
+            return None
+        elif delta != 0 and  cp_selected not in list_change_points_t:
+            return None
         
-        pre_cp = M[j-1]
-        next_cp = M[j+1]
+        pre_cp = Mt[j-1]
+        next_cp = Mt[j+1]
         prev_len = cp_selected - pre_cp
         next_len = next_cp - cp_selected
 
-        etaj = np.zeros(n)
-        etaj[pre_cp:cp_selected] = np.ones(prev_len)/prev_len
-        etaj[cp_selected:next_cp] = - np.ones(next_len)/next_len
+        etaj = np.zeros(n)        
+        etaj[(pre_cp+ns):(cp_selected+ns)] = np.ones(prev_len)/prev_len
+        etaj[(cp_selected+ns):(next_cp+ns)] = -np.ones(next_len)/next_len
         etaj = etaj.reshape(-1,1)
         etajTy = np.dot(etaj.T, y)[0][0]
         etajTSigmaetaj = (etaj.T @ Sigma @ etaj)[0][0]
         tn_sigma = np.sqrt(etajTSigmaetaj)
-
+        
         # Selective Inference
-        a, b = utils.compute_a_b(y, etaj)
-        intervals = si.fit(a, b, cp_model, da_model, zmin=-20*tn_sigma, zmax=20*tn_sigma, cp_mat=trans_mat)
+        a, b = utils.compute_a_b(y, etaj)      
+        intervals = si.fit(a, b, cp_model, da_model, zmin=-20*tn_sigma, zmax=20*tn_sigma, unit=unit, cp_mat=trans_mat)
         p_value = utils.p_value(intervals, etajTy, tn_sigma)
         with open(folder_path + '/p_values.txt', 'a') as f:
             f.write(f"{p_value}\n")

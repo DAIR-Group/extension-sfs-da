@@ -4,7 +4,7 @@ from .qp import VanillaLasso, ElasticNet, NNLS, FusedLasso
 from .utils import intersect
 import numpy as np
 
-def divide_and_conquer(a, b, regr_ins, da_ins, zmin, zmax, cp_mat):
+def divide_and_conquer(a, b, regr_ins, da_ins, zmin, zmax, unit, cp_mat):
     regr_class = type(regr_ins)
     hyperparams = regr_ins.get_hyperparams()
     da_class = type(da_ins)
@@ -45,11 +45,12 @@ def divide_and_conquer(a, b, regr_ins, da_ins, zmin, zmax, cp_mat):
             else:
                 regr_model = regr_class(X_tilde, y_tilde_u_zuv, **hyperparams)
             M_v = regr_model.fit()
-            
+            if unit is not None:
+                M_v = list(set([i // (unit+1) for i in M_v]))
             if regr_model.is_empty():
                 zuv += 5e-4
                 continue
-            
+         
             interval_regr = regr_model.si(a_tilde, b_tilde)            
             interval_uv = intersect(interval_da, interval_regr)
             # with open("./debug.txt", "a") as f:
@@ -59,10 +60,13 @@ def divide_and_conquer(a, b, regr_ins, da_ins, zmin, zmax, cp_mat):
             zuv = interval_uv[0][1] + 5e-5
     return list_intervals, list_M
 
-def fit(a, b, regr_ins, da_ins, zmin=-20, zmax=20, cp_mat=None):
-    list_intervals, list_M = divide_and_conquer(a, b, regr_ins, da_ins, zmin, zmax, cp_mat)
+def fit(a, b, regr_ins, da_ins, zmin=-20, zmax=20, unit=None, cp_mat=None):
+    list_intervals, list_M = divide_and_conquer(a, b, regr_ins, da_ins, zmin, zmax, unit, cp_mat)
     Z = []
-    M_obs = regr_ins.active_set
+    if unit is not None:
+        M_obs = list(set([i // (unit+1) for i in regr_ins.active_set]))
+    else:
+        M_obs = regr_ins.active_set
     for i in range(len(list_intervals)):
         if np.array_equal(list_M[i], M_obs):
             Z.append(list_intervals[i])

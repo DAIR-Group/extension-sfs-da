@@ -185,7 +185,7 @@ class ChangePointDetectorBase(QuadraticProgramming):
             start = change_point[0]
             end = change_point[1]
             true_y[start:end] += sign * delta
-            sign *= -1
+            sign = 1 - sign
         
         y = true_y + np.random.normal(0, 1, n)
         return y.reshape(-1,1), true_y.reshape(-1,1), np.eye(n)
