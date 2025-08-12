@@ -97,7 +97,7 @@ class OTDA():
 
         self.T = T
         self.B = B
-        
+        # print(len(B))
         self.v = - np.linalg.inv(self.H[:,self.B].T) @ self.c[self.B,:]
         self.u = self.c + self.H.T @ self.v
         return self.T, self.B

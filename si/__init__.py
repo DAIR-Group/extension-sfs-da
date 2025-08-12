@@ -21,6 +21,7 @@ def divide_and_conquer(a, b, regr_ins, cv_ins, da_ins, zmin, zmax, unit, cp_mat)
             ys, yt = y_zuv[:ns,:], y_zuv[ns:,:]
             da_model = da_class(np.hstack((Xs, ys)), np.hstack((Xt, yt)))
             Tu, _ = da_model.fit()
+            # da_model.check_KKT()
             interval_da = da_model.si(a, b)
 
             # Select the interval containing the data point that we are currently considering.
