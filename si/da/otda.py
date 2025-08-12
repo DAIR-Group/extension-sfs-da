@@ -1,4 +1,4 @@
-from scipy.optimize import linprog
+from scipy.cluster.hierarchy import DisjointSet
 import ot
 import numpy as np
 from ..utils import solve_quadratic_inequality, intersect
@@ -40,6 +40,37 @@ def construct_h(ns, nt):
     h = h[:-1,:]
     return h
 
+def construct_B(T, u, v, c, tol=1e-6):
+    ns, nt = T.shape
+    DJ = DisjointSet(range(ns + nt))
+    B = []
+
+    # Vectorized first loop - process elements where T > tol
+    large_T_indices = np.where(T > tol)
+    for i, j in zip(large_T_indices[0], large_T_indices[1]):
+        DJ.merge(i, j + ns)
+        B.append(i * nt + j)
+    
+    # Early exit if we already have enough elements
+    if len(B) >= ns + nt - 1:
+        return sorted(B[:ns + nt - 1])
+    
+    # Vectorized computation of reduced costs
+    rc = c - u[:, np.newaxis] - v[np.newaxis, :]
+    
+    # Find candidates where |rc| < tol
+    candidate_indices = np.where(np.abs(rc) < tol)
+    
+    # Process candidates in order
+    for i, j in zip(candidate_indices[0], candidate_indices[1]):
+        if len(B) >= ns + nt - 1:
+            break
+        if not DJ.connected(i, j + ns):
+            DJ.merge(i, j + ns)
+            B.append(i * nt + j)
+    
+    return sorted(B)
+
 class OTDA():
     """
     Optimal Transport-based Domain Adaptation (OTDA).
@@ -58,19 +89,15 @@ class OTDA():
     def fit(self):
         row_mass = np.ones(self.ns) / self.ns
         col_mass = np.ones(self.nt) / self.nt
-        T = ot.emd(a=row_mass, b=col_mass, M=self.c.reshape(self.ns, self.nt))
-        B = np.where(T.reshape(-1) != 0)[0]
+        T, log = ot.emd(a=row_mass, b=col_mass, M=self.c.reshape(self.ns, self.nt), log=True)
+        B = np.where(T.reshape(-1) != 0)[0].tolist()
 
-        if B.shape[0] != self.ns+self.nt-1:
-            n = self.c.shape[0]
-            res = linprog(self.c, A_ub = -np.identity(n), b_ub = np.zeros((n, 1)), A_eq = self.H, b_eq = self.h,
-                        method = 'simplex', options = {'maxiter': 100000})
-            T = res.x.reshape(self.ns, self.nt)
-            B = res.basis
+        if len(B) != self.ns+self.nt-1:
+            B = construct_B(T, log['u'], log['v'], self.c.reshape(self.ns, self.nt))
 
         self.T = T
-        self.B = B.tolist()
-
+        self.B = B
+        
         self.v = - np.linalg.inv(self.H[:,self.B].T) @ self.c[self.B,:]
         self.u = self.c + self.H.T @ self.v
         return self.T, self.B

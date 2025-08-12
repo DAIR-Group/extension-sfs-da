@@ -4,7 +4,7 @@ os.environ["NUMEXPR_NUM_THREADS"] = "1"
 os.environ["OMP_NUM_THREADS"] = "1" 
 
 import si
-from si import utils, OTDA, NNLS
+from si import utils, OTDA, VanillaLasso
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -52,18 +52,18 @@ ns, nt, p = 100, 10, 5
 Lambda = 10
 Gamma = 1
 true_beta = 1
-model_name = "OT-NNLS"
+model_name = "OT-VanillaLasso"
 
 def run(args):
-    k = args[0] 
-    folder_path = args[1]
-    try:
+        k = args[0] 
+        folder_path = args[1]
+    # try:
         # Generate target data
         np.random.seed(k)
         true_beta_s = np.full((p, 1), 2)
-        Xs, ys, mu_s, Sigma_s = NNLS.gen_data(ns, p, true_beta_s)
+        Xs, ys, mu_s, Sigma_s = VanillaLasso.gen_data(ns, p, true_beta_s)
         true_beta_t = np.full((p, 1), true_beta)
-        Xt, yt, mu_t, Sigma_t = NNLS.gen_data(nt, p, true_beta_t)
+        Xt, yt, mu_t, Sigma_t = VanillaLasso.gen_data(nt, p, true_beta_t)
         
         X = np.vstack((Xs, Xt))
         y = np.vstack((ys, yt))
@@ -81,7 +81,7 @@ def run(args):
         y_tilde = Omega @ y
 
         hyperparams = {'Lambda': Lambda, 'Gamma': Gamma}
-        fs_model = NNLS(X_tilde, y_tilde, **hyperparams)
+        fs_model = VanillaLasso(X_tilde, y_tilde, **hyperparams)
         M = fs_model.fit()
         # fs_model.check_KKT()
 
@@ -107,11 +107,13 @@ def run(args):
         with open(folder_path + '/p_values.txt', 'a') as f:
             f.write(f"{p_value}\n")
         return p_value
-    except Exception as e:
-        print(f"\nError in run({k}): {e}")
-        return None
+    # except Exception as e:
+    #     print(f"\nError in run({k}): {e}")
+    #     return None
 
 if __name__ == "__main__":
+    # run([40, 0])
+
     folder_path = create_experiment_folder(
         config_data={"ns": ns, "nt": nt, "p": p, "Lambda": Lambda, "Gamma": Gamma, "true_beta": true_beta, 
                      "method": "parametric", "model": model_name}
