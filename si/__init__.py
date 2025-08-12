@@ -46,7 +46,8 @@ def divide_and_conquer(a, b, regr_ins, da_ins, zmin, zmax, unit, cp_mat):
                 regr_model = regr_class(X_tilde, y_tilde_u_zuv, **hyperparams)
             M_v = regr_model.fit()
             if unit is not None:
-                M_v = list(set([i // (unit+1) for i in M_v]))
+                M_v = list(dict.fromkeys(i // (unit+1) for i in M_v[1:-1]))
+                M_v = [0] + M_v + [nt-1]
             if regr_model.is_empty():
                 zuv += 5e-4
                 continue
@@ -60,11 +61,28 @@ def divide_and_conquer(a, b, regr_ins, da_ins, zmin, zmax, unit, cp_mat):
             zuv = interval_uv[0][1] + 5e-5
     return list_intervals, list_M
 
-def fit(a, b, regr_ins, da_ins, zmin=-20, zmax=20, unit=None, cp_mat=None):
+def is_continuous_sublist(a, b):
+    a = np.array(a)
+    b = np.array(b)
+    if len(a) == 0:
+        return True
+    if len(a) > len(b):
+        return False
+
+    from numpy.lib.stride_tricks import sliding_window_view
+    windows = sliding_window_view(b, len(a))
+    return np.any(np.all(windows == a, axis=1))
+
+def fit(a, b, regr_ins, da_ins, zmin=-20, zmax=20, min_condition=None, unit=None, cp_mat=None):
     list_intervals, list_M = divide_and_conquer(a, b, regr_ins, da_ins, zmin, zmax, unit, cp_mat)
     Z = []
     if unit is not None:
-        M_obs = list(set([i // (unit+1) for i in regr_ins.active_set]))
+        # M_obs = list(dict.fromkeys(i // (unit+1) for i in regr_ins.active_set[1:-1]))
+        # M_obs = [0] + M_obs + [da_ins.nt-1]
+        for i in range(len(list_intervals)):
+            if is_continuous_sublist(min_condition, list_M[i]):
+                Z.append(list_intervals[i])
+        return Z
     else:
         M_obs = regr_ins.active_set
     for i in range(len(list_intervals)):
