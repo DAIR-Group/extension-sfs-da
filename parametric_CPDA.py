@@ -135,7 +135,7 @@ def run(args):
         etajTy = np.dot(etaj.T, y)[0][0]
         etajTSigmaetaj = (etaj.T @ Sigma @ etaj)[0][0]
         tn_sigma = np.sqrt(etajTSigmaetaj)
-        print(etajTy, tn_sigma)
+
         # Selective Inference
         a, b = utils.compute_a_b(y, etaj)      
         min_condition = [pre_cp, cp_selected, next_cp]
