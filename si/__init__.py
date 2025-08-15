@@ -84,6 +84,7 @@ def divide_and_conquer(a, b, regr_ins, cv_ins, da_ins, zmin, zmax, unit, cp_mat)
             ys, yt = yz[0:ns, :], yz[ns:, :]
             da_model = da_class(np.hstack((Xs, ys)), np.hstack((Xt, yt)))
             Tz, _ = da_model.fit()
+            da_model.check_KKT()
             interval_da = da_model.si(a, b)
 
             # Select the interval containing the data point that we are currently considering.
@@ -118,6 +119,7 @@ def divide_and_conquer(a, b, regr_ins, cv_ins, da_ins, zmin, zmax, unit, cp_mat)
 
                     regr_model = regr_class(Xz_tilde, yz_tilde, **hyperparams)
                     M_v = regr_model.fit()
+                    regr_model.check_KKT()
                     
                     if regr_model.is_empty():   
                         z += 1e-4

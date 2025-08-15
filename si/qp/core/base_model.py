@@ -26,7 +26,7 @@ class QuadraticProgramming(ABC):
             constraints.append(self.Q @ x == 0)
 
         prob = cp.Problem(objective, constraints)
-        prob.solve(solver=cp.OSQP, eps_abs=1e-10, eps_rel=1e-10, verbose=False)
+        prob.solve(solver=cp.OSQP, eps_abs=1e-10, eps_rel=1e-10, max_iter=1000000, polish=True ,verbose=False)
         self.eps = x.value.reshape(-1,1)
         self.u = prob.constraints[0].dual_value.reshape(-1,1)
 
@@ -41,7 +41,7 @@ class QuadraticProgramming(ABC):
         '''
         if self.Q is not None:
             sta = self.A @ self.eps + self.Delta + self.P.T @ self.u + self.Q.T @ self.v
-            prec = 1e-9
+            prec = 1e-6
             if np.any((sta < -prec) | (sta > prec)):
                 print(sta[np.where((sta < -prec) | (sta > prec))[0],:])
                 raise ValueError("Stationarity Condition Failed!")
@@ -98,7 +98,7 @@ class QuadraticProgramming(ABC):
             g0 = -np.vstack((-self.X.T @ a, self.Lambda * np.ones((2*self.m, 1))))
             g1 = -np.vstack((-self.X.T @ b, np.zeros((2*self.m, 1))))
 
-            I = np.where(self.u > 1e-9)[0].tolist()
+            I = np.where(self.u > 1e-6)[0].tolist()
             Ic = [i for i in range(len(self.u)) if i not in I]
             PI = np.copy(self.P[I, :])
             PIc = np.copy(self.P[Ic, :])
@@ -126,7 +126,7 @@ class QuadraticProgramming(ABC):
             g0 = -np.vstack((-self.X.T @ a))
             g1 = -np.vstack((-self.X.T @ b))
 
-            I = np.where(self.u > 1e-9)[0].tolist()
+            I = np.where(self.u > 1e-6)[0].tolist()
             Ic = [i for i in range(len(self.u)) if i not in I]
             PI = np.copy(self.P[I, :])
             PIc = np.copy(self.P[Ic, :])

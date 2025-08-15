@@ -127,7 +127,7 @@ class OTDA():
     def check_KKT(self):
         t = self.T.reshape(-1, 1)
         sta = self.c - self.u + self.H.T @ self.v
-        prec = 1e-8
+        prec = 1e-6
         if np.any((sta < -prec) | (sta > prec)):
             print(sta[np.where((sta < -prec) | (sta > prec))[0],:])
             raise ValueError("Stationarity Condition Failed!")

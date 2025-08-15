@@ -73,7 +73,7 @@ def run(args):
 
         da_model = OTDA(np.hstack((Xs, ys)), np.hstack((Xt, yt)))
         T, _ = da_model.fit()
-        # da_model.check_KKT()
+        da_model.check_KKT()
 
         # Adapt the data
         Omega = np.hstack((np.zeros((ns + nt, ns)), np.vstack((ns * T, np.identity(nt)))))
@@ -89,7 +89,7 @@ def run(args):
         hyperparams = {'Lambda': best_Lambda, 'Gamma': Gamma}
         fs_model = VanillaLasso(X_tilde, y_tilde, **hyperparams)
         M = fs_model.fit()
-        # fs_model.check_KKT()
+        fs_model.check_KKT()
 
         if fs_model.is_empty():
             return None
@@ -118,6 +118,7 @@ def run(args):
         return None
 
 if __name__ == "__main__":
+    # run([1, 1])
     folder_path = create_experiment_folder(
         config_data={"ns": ns, "nt": nt, "p": p, "Lambda": Lambda, "Gamma": Gamma, "true_beta": true_beta, 
                      "method": "parametric", "model": model_name}
