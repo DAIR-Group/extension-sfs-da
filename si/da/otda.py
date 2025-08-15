@@ -41,13 +41,13 @@ def construct_h(ns, nt):
     h = h[:-1,:]
     return h
 
-def construct_B(T, u, v, c, tol=1e-6):
+def construct_B(T, u, v, c):
     ns, nt = T.shape
     DJ = DisjointSet(range(ns + nt))
     B = []
 
-    # Vectorized first loop - process elements where T > tol
-    large_T_indices = np.where(T > tol)
+    # Vectorized first loop - process elements where T > 0
+    large_T_indices = np.where(T > 0)
     for i, j in zip(large_T_indices[0], large_T_indices[1]):
         DJ.merge(i, j + ns)
         B.append(i * nt + j)
@@ -59,11 +59,13 @@ def construct_B(T, u, v, c, tol=1e-6):
     # Vectorized computation of reduced costs
     rc = c - u[:, np.newaxis] - v[np.newaxis, :]
     
-    # Find candidates where |rc| < tol
-    candidate_indices = np.where(np.abs(rc) < tol)
+    # Find candidates with smallest |rc|
+    flat_rc = np.abs(rc).flatten()
+    sorted_indices = np.argsort(flat_rc)
     
-    # Process candidates in order
-    for i, j in zip(candidate_indices[0], candidate_indices[1]):
+    # Process candidates in order of smallest reduced cost
+    for idx in sorted_indices:
+        i, j = divmod(idx, nt)
         if len(B) >= ns + nt - 1:
             break
         if not DJ.connected(i, j + ns):
@@ -98,7 +100,7 @@ class OTDA():
 
         self.T = T
         self.B = B
-        # print(len(B))
+        
         self.v = - np.linalg.inv(self.H[:,self.B].T) @ self.c[self.B,:]
         self.u = self.c + self.H.T @ self.v
         return self.T, self.B

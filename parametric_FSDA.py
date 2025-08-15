@@ -48,7 +48,7 @@ def create_experiment_folder(base_dir="exp", config_data=None):
     print(f"Created experiment folder: {exp_dir}")
     return exp_dir
 
-ns, nt, p = 50, 10, 5
+ns, nt, p = 100, 10, 5
 Lambda = 10
 Gamma = 1
 true_beta = 0
@@ -112,38 +112,38 @@ def run(args):
         return None
 
 if __name__ == "__main__":
-    run([28, 0])
+    # run([40, 0])
 
-    # folder_path = create_experiment_folder(
-    #     config_data={"ns": ns, "nt": nt, "p": p, "Lambda": Lambda, "Gamma": Gamma, "true_beta": true_beta, 
-    #                  "method": "parametric", "model": model_name}
-    # )
+    folder_path = create_experiment_folder(
+        config_data={"ns": ns, "nt": nt, "p": p, "Lambda": Lambda, "Gamma": Gamma, "true_beta": true_beta, 
+                     "method": "parametric", "model": model_name}
+    )
 
-    # max_iter = 120
-    # alpha = 0.05
-    # cnt = 0
+    max_iter = 120
+    alpha = 0.05
+    cnt = 0
 
-    # args = [[i, folder_path] for i in range(max_iter)]
-    # list_p_values = []
-    # with Pool() as pool:
-    #     list_result = list(tqdm(pool.imap_unordered(run, args), total=max_iter, desc="Iter"))
+    args = [[i, folder_path] for i in range(max_iter)]
+    list_p_values = []
+    with Pool() as pool:
+        list_result = list(tqdm(pool.imap_unordered(run, args), total=max_iter, desc="Iter"))
 
-    # for p_value in list_result:
-    #     if p_value is None:
-    #         continue
-    #     list_p_values.append(p_value)
-    #     if p_value <= alpha:
-    #         cnt += 1
+    for p_value in list_result:
+        if p_value is None:
+            continue
+        list_p_values.append(p_value)
+        if p_value <= alpha:
+            cnt += 1
 
-    # FPR = cnt / len(list_p_values)
-    # print("FPR/TPR:", FPR)
-    # ks_test = scipy.stats.kstest(list_p_values, "uniform")[1]
-    # print(f'KS-Test: {ks_test}')
+    FPR = cnt / len(list_p_values)
+    print("FPR/TPR:", FPR)
+    ks_test = scipy.stats.kstest(list_p_values, "uniform")[1]
+    print(f'KS-Test: {ks_test}')
 
-    # with open(folder_path+'/metrics.txt', 'w') as f:
-    #     f.write(f"FPR/TPR: \t{FPR}\nKS-Test: \t{ks_test}")
+    with open(folder_path+'/metrics.txt', 'w') as f:
+        f.write(f"FPR/TPR: \t{FPR}\nKS-Test: \t{ks_test}")
 
-    # plt.hist(list_p_values)
-    # plt.savefig(folder_path + '/p_value_hist.pdf')
-    # # plt.show()
-    # plt.close()
+    plt.hist(list_p_values)
+    plt.savefig(folder_path + '/p_value_hist.pdf')
+    # plt.show()
+    plt.close()
