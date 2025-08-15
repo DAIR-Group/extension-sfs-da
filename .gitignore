@@ -7,3 +7,5 @@ exp
 note.txt
 __pycache__
 run.ipynb
+*.pdf
+*.txt
