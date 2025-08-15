@@ -55,9 +55,9 @@ true_beta = 0
 model_name = "OT-VanillaLasso"
 
 def run(args):
-        k = args[0] 
-        folder_path = args[1]
-    # try:
+    k = args[0] 
+    folder_path = args[1]
+    try:
         # Generate target data
         np.random.seed(k)
         true_beta_s = np.full((p, 1), 2)
@@ -107,43 +107,43 @@ def run(args):
         with open(folder_path + '/p_values.txt', 'a') as f:
             f.write(f"{p_value}\n")
         return p_value
-    # except Exception as e:
-    #     print(f"\nError in run({k}): {e}")
-    #     return None
+    except Exception as e:
+        print(f"\nError in run({k}): {e}")
+        return None
 
 if __name__ == "__main__":
-    # run([40, 0])
+    run([28, 0])
 
-    folder_path = create_experiment_folder(
-        config_data={"ns": ns, "nt": nt, "p": p, "Lambda": Lambda, "Gamma": Gamma, "true_beta": true_beta, 
-                     "method": "parametric", "model": model_name}
-    )
+    # folder_path = create_experiment_folder(
+    #     config_data={"ns": ns, "nt": nt, "p": p, "Lambda": Lambda, "Gamma": Gamma, "true_beta": true_beta, 
+    #                  "method": "parametric", "model": model_name}
+    # )
 
-    max_iter = 120
-    alpha = 0.05
-    cnt = 0
+    # max_iter = 120
+    # alpha = 0.05
+    # cnt = 0
 
-    args = [[i, folder_path] for i in range(max_iter)]
-    list_p_values = []
-    with Pool() as pool:
-        list_result = list(tqdm(pool.imap_unordered(run, args), total=max_iter, desc="Iter"))
+    # args = [[i, folder_path] for i in range(max_iter)]
+    # list_p_values = []
+    # with Pool() as pool:
+    #     list_result = list(tqdm(pool.imap_unordered(run, args), total=max_iter, desc="Iter"))
 
-    for p_value in list_result:
-        if p_value is None:
-            continue
-        list_p_values.append(p_value)
-        if p_value <= alpha:
-            cnt += 1
+    # for p_value in list_result:
+    #     if p_value is None:
+    #         continue
+    #     list_p_values.append(p_value)
+    #     if p_value <= alpha:
+    #         cnt += 1
 
-    FPR = cnt / len(list_p_values)
-    print("FPR/TPR:", FPR)
-    ks_test = scipy.stats.kstest(list_p_values, "uniform")[1]
-    print(f'KS-Test: {ks_test}')
+    # FPR = cnt / len(list_p_values)
+    # print("FPR/TPR:", FPR)
+    # ks_test = scipy.stats.kstest(list_p_values, "uniform")[1]
+    # print(f'KS-Test: {ks_test}')
 
-    with open(folder_path+'/metrics.txt', 'w') as f:
-        f.write(f"FPR/TPR: \t{FPR}\nKS-Test: \t{ks_test}")
+    # with open(folder_path+'/metrics.txt', 'w') as f:
+    #     f.write(f"FPR/TPR: \t{FPR}\nKS-Test: \t{ks_test}")
 
-    plt.hist(list_p_values)
-    plt.savefig(folder_path + '/p_value_hist.pdf')
-    # plt.show()
-    plt.close()
+    # plt.hist(list_p_values)
+    # plt.savefig(folder_path + '/p_value_hist.pdf')
+    # # plt.show()
+    # plt.close()
