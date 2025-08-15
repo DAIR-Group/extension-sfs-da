@@ -98,7 +98,7 @@ class QuadraticProgramming(ABC):
             g0 = -np.vstack((-self.X.T @ a, self.Lambda * np.ones((2*self.m, 1))))
             g1 = -np.vstack((-self.X.T @ b, np.zeros((2*self.m, 1))))
 
-            I = np.where(self.u > 1e-10)[0].tolist()
+            I = np.where(self.u > 1e-9)[0].tolist()
             Ic = [i for i in range(len(self.u)) if i not in I]
             PI = np.copy(self.P[I, :])
             PIc = np.copy(self.P[Ic, :])
@@ -126,7 +126,7 @@ class QuadraticProgramming(ABC):
             g0 = -np.vstack((-self.X.T @ a))
             g1 = -np.vstack((-self.X.T @ b))
 
-            I = np.where(self.u > 1e-10)[0].tolist()
+            I = np.where(self.u > 1e-9)[0].tolist()
             Ic = [i for i in range(len(self.u)) if i not in I]
             PI = np.copy(self.P[I, :])
             PIc = np.copy(self.P[Ic, :])

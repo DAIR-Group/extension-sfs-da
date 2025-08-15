@@ -1,3 +1,4 @@
+from scipy.optimize import linprog
 from scipy.cluster.hierarchy import DisjointSet
 import ot
 import numpy as np
@@ -101,6 +102,27 @@ class OTDA():
         self.v = - np.linalg.inv(self.H[:,self.B].T) @ self.c[self.B,:]
         self.u = self.c + self.H.T @ self.v
         return self.T, self.B
+
+    # def fit(self):
+    #     row_mass = np.ones(self.ns) / self.ns
+    #     col_mass = np.ones(self.nt) / self.nt
+    #     T = ot.emd(a=row_mass, b=col_mass, M=self.c.reshape(self.ns, self.nt))
+    #     B = np.where(T.reshape(-1) != 0)[0]
+
+    #     if B.shape[0] != self.ns+self.nt-1:
+    #         n = self.c.shape[0]
+    #         res = linprog(self.c, A_ub = -np.identity(n), b_ub = np.zeros((n, 1)), A_eq = self.H, b_eq = self.h,
+    #                     method = 'simplex', options = {'maxiter': 100000})
+    #         T = res.x.reshape(self.ns, self.nt)
+    #         B = res.basis
+
+    #     self.T = T
+    #     self.B = B.tolist()
+
+    #     self.v = - np.linalg.inv(self.H[:,self.B].T) @ self.c[self.B,:]
+    #     self.u = self.c + self.H.T @ self.v
+
+    #     return self.T, self.B
 
     def check_KKT(self):
         t = self.T.reshape(-1, 1)

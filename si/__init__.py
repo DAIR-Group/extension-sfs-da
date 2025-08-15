@@ -15,52 +15,56 @@ def divide_and_conquer(a, b, regr_ins, cv_ins, da_ins, zmin, zmax, unit, cp_mat)
         
         list_intervals = []
         list_M = []
-        zuv = zmin
-        while zuv < zmax:
-            y_zuv = a+b*zuv
-            ys, yt = y_zuv[:ns,:], y_zuv[ns:,:]
+        z = zmin
+        while z < zmax:
+            yz = a + b * z
+            ys, yt = yz[0:ns, :], yz[ns:, :]
             da_model = da_class(np.hstack((Xs, ys)), np.hstack((Xt, yt)))
-            Tu, _ = da_model.fit()
+            Tz, _ = da_model.fit()
             # da_model.check_KKT()
             interval_da = da_model.si(a, b)
 
             # Select the interval containing the data point that we are currently considering.
             for i in interval_da:
-                if i[0] <= zuv <= i[1]:
+                if i[0] <= z <= i[1]:
                     interval_da = [i]
                     break
 
-            Omega_u = np.hstack((np.zeros((ns + nt, ns)), np.vstack((ns * Tu, np.identity(nt)))))
-            a_tilde, b_tilde = Omega_u @ a, Omega_u @ b 
+            Omega_z = np.hstack((np.zeros((ns + nt, ns)), np.vstack((ns * Tz, np.identity(nt)))))
+            a_tilde, b_tilde = Omega_z @ a, Omega_z @ b 
+            
             if cp_mat is not None:
                 a_tilde, b_tilde = cp_mat @ a_tilde, cp_mat @ b_tilde  
             else:
-                X_tilde = Omega_u @ X
-
-            while zuv < interval_da[0][1]:
-                y_zuv = a+b*zuv
-                y_tilde_u_zuv = Omega_u.dot(y_zuv)
+                Xz_tilde = Omega_z @ X
+            
+            while z < interval_da[0][1]:
+                yz = a + b * z
+                yz_tilde = Omega_z @ yz
                 
                 if cp_mat is not None:
-                    y_tilde_u_zuv = cp_mat @ y_tilde_u_zuv  
-                    regr_model = regr_class(y_tilde_u_zuv, **hyperparams)
+                    yz_tilde = cp_mat @ yz_tilde  
+                    regr_model = regr_class(yz_tilde, **hyperparams)
                 else:
-                    regr_model = regr_class(X_tilde, y_tilde_u_zuv, **hyperparams)
+                    regr_model = regr_class(Xz_tilde, yz_tilde, **hyperparams)
                 M_v = regr_model.fit()
+                
                 if unit is not None:
                     M_v = list(dict.fromkeys(i // (unit+1) for i in M_v[1:-1]))
                     M_v = [0] + M_v + [nt-1]
+                
                 if regr_model.is_empty():
-                    zuv += 5e-4
+                    z += 1e-4
                     continue
             
                 interval_regr = regr_model.si(a_tilde, b_tilde)            
-                interval_uv = intersect(interval_da, interval_regr)
-                with open("./debug.txt", "a") as f:
-                    f.write(f'{interval_uv}\t\t{zuv}\t\t{interval_da}\t\t{interval_regr}\t\t{M_v}\n')
-                list_intervals += interval_uv
+                interval_z = intersect(interval_da, interval_regr)
+                # with open("./debug.txt", "a") as f:
+                    # f.write(f'{interval_uv}\t\t{zuv}\t\t{interval_da}\t\t{interval_regr}\t\t{M_v}\n')
+                list_intervals += interval_z
                 list_M += [M_v]
-                zuv = interval_uv[0][1] + 5e-5
+                z = interval_z[0][1] + 1e-5
+        
         return list_intervals, list_M
     else:
         regr_class = type(regr_ins)
@@ -73,53 +77,59 @@ def divide_and_conquer(a, b, regr_ins, cv_ins, da_ins, zmin, zmax, unit, cp_mat)
         
         list_intervals = []
         list_M = []
-        zuv = zmin
-        while zuv < zmax:
-            y_zuv = a+b*zuv
-            ys, yt = y_zuv[:ns,:], y_zuv[ns:,:]
+        z = zmin
+
+        while z < zmax:
+            yz = a + b * z
+            ys, yt = yz[0:ns, :], yz[ns:, :]
             da_model = da_class(np.hstack((Xs, ys)), np.hstack((Xt, yt)))
-            Tu, _ = da_model.fit()
+            Tz, _ = da_model.fit()
             interval_da = da_model.si(a, b)
 
             # Select the interval containing the data point that we are currently considering.
             for i in interval_da:
-                if i[0] <= zuv <= i[1]:
+                if i[0] <= z <= i[1]:
                     interval_da = [i]
                     break
 
-            Omega_u = np.hstack((np.zeros((ns + nt, ns)), np.vstack((ns * Tu, np.identity(nt)))))
-            a_tilde, b_tilde = Omega_u @ a, Omega_u @ b 
-            X_tilde = Omega_u @ X
+            Omega_z = np.hstack((np.zeros((ns + nt, ns)), np.vstack((ns * Tz, np.identity(nt)))))
+            a_tilde, b_tilde = Omega_z @ a, Omega_z @ b 
+            Xz_tilde = Omega_z @ X
 
-            while zuv < interval_da[0][1]:
-                y_zuv = a+b*zuv
-                y_tilde_u_zuv = Omega_u.dot(y_zuv)
+            while z < interval_da[0][1]:
+                yz = a + b * z
+                yz_tilde = Omega_z @ yz
                 
                 cv_model = cv_class(train_indices=cv_ins.train_indices, val_indices=cv_ins.val_indices)
-                best_Lambda, _ = cv_model.fit(X_tilde, y_tilde_u_zuv, regr_class, cv_ins.list_lambda)
+                best_Lambda, _ = cv_model.fit(Xz_tilde, yz_tilde, regr_class, cv_ins.list_lambda)
                 interval_cv = cv_model.si(a_tilde, b_tilde)
 
                 for i in interval_cv:
-                    if i[0] <= zuv <= i[1]:
+                    if i[0] <= z <= i[1]:
                         interval_cv = [i]
                         break
-                
+
                 interval_cv = intersect(interval_da, interval_cv)
                 hyperparams['Lambda'] = best_Lambda
-                while zuv < interval_cv[0][1]:
-                    regr_model = regr_class(X_tilde, y_tilde_u_zuv, **hyperparams)
+
+                while z < interval_cv[0][1]:
+                    yz = a + b * z
+                    yz_tilde = Omega_z @ yz
+
+                    regr_model = regr_class(Xz_tilde, yz_tilde, **hyperparams)
                     M_v = regr_model.fit()
-                    if regr_model.is_empty():
-                        zuv += 5e-4
+                    
+                    if regr_model.is_empty():   
+                        z += 1e-4
                         continue
                 
-                    interval_regr = regr_model.si(a_tilde, b_tilde)            
-                    interval_uv = intersect(interval_cv, interval_regr)
-                    # with open("./debug.txt", "a") as f:
-                    #     f.write(f'{interval_uv}\t\t{zuv}\t\t{interval_da}\t\t{interval_regr}\t\t{M_v}\n')
-                    list_intervals += interval_uv
+                    interval_regr = regr_model.si(a_tilde, b_tilde)
+                    interval_z = intersect(interval_cv, interval_regr)
+                    list_intervals += interval_z
                     list_M += [M_v]
-                    zuv = interval_uv[0][1] + 5e-5
+                    z = interval_z[0][1] + 1e-5
+                    # with open("./debug.txt", "a") as f:
+                        # f.write(f'{z}\t\t{interval_z}\n')
         return list_intervals, list_M
 
 def is_continuous_sublist(a, b):

@@ -52,13 +52,13 @@ def create_experiment_folder(base_dir="exp", config_data=None):
 nt = 10
 unit = 10
 Lambda = 10
-delta = 0
+delta = 4
 model_name = "OT-FusedLasso"
 
 def run(args):
-    k = args[0] 
-    folder_path = args[1]
-    try:
+        k = args[0] 
+        folder_path = args[1]
+    # try:
         # Generate target data
         np.random.seed(k)
         nt = 10
@@ -143,17 +143,19 @@ def run(args):
         with open(folder_path + '/p_values.txt', 'a') as f:
             f.write(f"{p_value}\n")
         return p_value
-    except Exception as e:
-        print(f"\nError in run({k}): {e}")
-        return None
+    # except Exception as e:
+    #     print(f"\nError in run({k}): {e}")
+    #     return None
 
 if __name__ == "__main__":
+    # run([24, 0])
+
     folder_path = create_experiment_folder(
         config_data={"nt": nt, "unit": unit, "Lambda": Lambda, "delta": delta, 
                      "method": "parametric", "model": model_name}
     )
 
-    max_iter = 1200
+    max_iter = 120
     alpha = 0.05
     cnt = 0
 

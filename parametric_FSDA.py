@@ -48,10 +48,10 @@ def create_experiment_folder(base_dir="exp", config_data=None):
     print(f"Created experiment folder: {exp_dir}")
     return exp_dir
 
-ns, nt, p = 100, 10, 5
+ns, nt, p = 50, 10, 5
 Lambda = 10
 Gamma = 1
-true_beta = 1
+true_beta = 0
 model_name = "OT-VanillaLasso"
 
 def run(args):
