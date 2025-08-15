@@ -6,6 +6,7 @@ debug.txt
 exp
 note.txt
 __pycache__
-run.ipynb
+*.ipynb
 *.pdf
 *.txt
+plot.py
