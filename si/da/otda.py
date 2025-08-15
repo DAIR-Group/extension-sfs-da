@@ -1,4 +1,4 @@
-from scipy.optimize import linprog
+# from scipy.optimize import linprog
 from scipy.cluster.hierarchy import DisjointSet
 import ot
 import numpy as np
