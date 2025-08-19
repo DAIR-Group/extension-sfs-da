@@ -61,7 +61,7 @@ def divide_and_conquer(a, b, regr_ins, cv_ins, da_ins, zmin, zmax, unit, cp_mat)
                 interval_regr = regr_model.si(a_tilde, b_tilde)            
                 interval_z = intersect(interval_da, interval_regr)
                 # with open("./debug.txt", "a") as f:
-                    # f.write(f'{interval_uv}\t\t{zuv}\t\t{interval_da}\t\t{interval_regr}\t\t{M_v}\n')
+                #     f.write(f'{interval_z}\t\t{z}\t\t{interval_da}\t\t{interval_regr}\t\t{M_v}\n')
                 list_intervals += interval_z
                 list_M += [M_v]
                 z = interval_z[0][1] + 1e-5
@@ -153,10 +153,10 @@ def fit(a, b, regr_ins, cv_ins=None, da_ins=None, zmin=-20, zmax=20,
     
     Z = []
     if unit is not None:
-        # M_obs = list(dict.fromkeys(i // (unit+1) for i in regr_ins.active_set[1:-1]))
-        # M_obs = [0] + M_obs + [da_ins.nt-1]
+        M_obs = list(dict.fromkeys(i // (unit+1) for i in regr_ins.active_set[1:-1]))
+        M_obs = [0] + M_obs + [da_ins.nt-1]
         for i in range(len(list_intervals)):
-            if is_continuous_sublist(min_condition, list_M[i]):
+            if np.array_equal(list_M[i], M_obs):
                 Z.append(list_intervals[i])
         return Z
     else:
