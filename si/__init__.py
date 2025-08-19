@@ -1,5 +1,5 @@
 from .da import OTDA
-from .cv import HoldOutCV
+from .cv import HoldOutCV, KFoldCV
 from .qp import VanillaLasso, ElasticNet, NNLS, FusedLasso
 from .utils import intersect
 import numpy as np
@@ -101,8 +101,7 @@ def divide_and_conquer(a, b, regr_ins, cv_ins, da_ins, zmin, zmax, unit, cp_mat)
             while z < interval_da[0][1]:
                 yz = a + b * z
                 yz_tilde = Omega_z @ yz
-                
-                cv_model = cv_class(train_indices=cv_ins.train_indices, val_indices=cv_ins.val_indices)
+                cv_model = cv_class(train_val_pairs=cv_ins.train_val_pairs)
                 best_Lambda, _ = cv_model.fit(Xz_tilde, yz_tilde, regr_class, cv_ins.list_lambda)
                 interval_cv = cv_model.si(a_tilde, b_tilde)
 

@@ -1,1 +1,1 @@
-from .models import HoldOutCV
+from .models import HoldOutCV, KFoldCV

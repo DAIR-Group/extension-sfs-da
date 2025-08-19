@@ -4,7 +4,7 @@ os.environ["NUMEXPR_NUM_THREADS"] = "1"
 os.environ["OMP_NUM_THREADS"] = "1" 
 
 import si
-from si import utils, OTDA, HoldOutCV, VanillaLasso
+from si import utils, OTDA, KFoldCV, VanillaLasso
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -52,7 +52,7 @@ ns, nt, p = 100, 10, 5
 Lambda = [2 ** x for x in range(-10, 11)]
 Gamma = 1
 true_beta = 0
-model_name = "OT-HoldOutCV-VanillaLasso"
+model_name = "OT-KFoldCV-VanillaLasso"
 
 def run(args):
     k = args[0] 
@@ -81,7 +81,7 @@ def run(args):
         y_tilde = Omega @ y
 
         # Tuning Lambda
-        cv_model = HoldOutCV(val_size=0.3, random_state=k)
+        cv_model = KFoldCV(random_state=k)
         cv_model.split(ns+nt)
         list_lambda = Lambda
         best_Lambda, _ = cv_model.fit(X_tilde, y_tilde, VanillaLasso, list_lambda)
