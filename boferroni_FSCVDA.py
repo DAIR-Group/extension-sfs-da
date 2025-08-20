@@ -68,21 +68,19 @@ def run(k):
 
         # Bonferroni correction
         p_value = max(1, p_value * (2**p))
-        # with open('./results/p_values.txt', 'a') as f:
-        #     f.write(f"{p_value}\n")
         return p_value
     except Exception as e:
         print(f"\nError in run({k}): {e}")
         return None
 
 if __name__ == "__main__":
-    max_iter = 1200
+    max_iter = 120
     alpha = 0.05
     cnt = 0
 
     list_p_values = []
     with Pool() as pool:
-        list_result = list(tqdm(pool.imap(run, range(max_iter)), total=max_iter, desc="Iter"))
+        list_result = list(tqdm(pool.imap_unordered(run, range(max_iter)), total=max_iter, desc="Iter"))
 
     for p_value in list_result:
         if p_value is None:

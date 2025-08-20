@@ -63,8 +63,6 @@ def run(k):
         
         # Bonferroni correction
         p_value = max(1, p_value * (2**p))
-        # with open('./results/p_values.txt', 'a') as f:
-        #     f.write(f"{p_value}\n")
         return p_value
     except Exception as e:
         print(f"\nError in run({k}): {e}")
