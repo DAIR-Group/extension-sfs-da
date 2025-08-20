@@ -12,7 +12,7 @@ import statsmodels.api as sm
 import scipy.stats
 import json
 import re
-
+import time
 from multiprocessing import Pool
 
 def get_next_id(base_dir="exp"):
@@ -133,23 +133,22 @@ def run(args):
         etajTy = np.dot(etaj.T, y)[0][0]
         etajTSigmaetaj = (etaj.T @ Sigma @ etaj)[0][0]
         tn_sigma = np.sqrt(etajTSigmaetaj)
-
+        start = time.time()
         # Selective Inference
         a, b = utils.compute_a_b(y, etaj)      
-        min_condition = [pre_cp, cp_selected, next_cp]
         intervals = si.fit(a, b, cp_model, da_ins=da_model, zmin=-20*tn_sigma, zmax=20*tn_sigma, 
-                           min_condition = min_condition, unit=unit, cp_mat=trans_mat)
+                           unit=unit, cp_mat=trans_mat)
         p_value = utils.p_value(intervals, etajTy, tn_sigma)
         with open(folder_path + '/p_values.txt', 'a') as f:
             f.write(f"{p_value}\n")
+        with open(folder_path + '/times.txt', 'a') as f:
+            f.write(f"{time.time()-start}\n")
         return p_value
     except Exception as e:
         print(f"\nError in run({k}): {e}")
         return None
 
 if __name__ == "__main__":
-    # run([24, 0])
-
     folder_path = create_experiment_folder(
         config_data={"nt": nt, "unit": unit, "Lambda": Lambda, "delta": delta, 
                      "method": "parametric", "model": model_name}
@@ -181,5 +180,4 @@ if __name__ == "__main__":
 
     plt.hist(list_p_values)
     plt.savefig(folder_path + '/p_value_hist.pdf')
-    # plt.show()
     plt.close()

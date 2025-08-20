@@ -164,24 +164,31 @@ class KFoldCV():
         """
         Selective Inference
         """
-        flag = False
-        intervals_1 = []
-        for lam in self.list_lambda:
-            for (model, (train_idx, _)) in zip(self.list_models[lam], self.train_val_pairs):
-                a_train, b_train = a[train_idx,:], b[train_idx,:]
-                temp = model.si(a_train, b_train)
-                if not flag:
-                    flag = True
-                    intervals_1 = temp
-                else:
-                    intervals_1 = intersect(intervals_1, temp)
+        # flag_1 = False
+        # intervals_1 = [[-np.inf, np.inf]]
+        # for lam in self.list_lambda:
+        #     for (model, (train_idx, _)) in zip(self.list_models[lam], self.train_val_pairs):
+        #         a_train, b_train = a[train_idx,:], b[train_idx,:]
+        #         temp = model.si(a_train, b_train)
+        #         if not flag:
+        #             flag = True
+        #             intervals_1 = temp
+        #         else:
+        #             intervals_1 = intersect(intervals_1, temp)
 
-        flag = False
-        intervals_2 = []            
+        # flag_2 = False
+        # intervals_2 = [[-np.inf, np.inf]]
+        # 
+
+        intervals = [[-np.inf, np.inf]]            
         l_a = 0
         l_b = 0
         l_c = 0
-        for i, (model, (_, val_idx)) in enumerate(zip(self.list_models[self.best_lam], self.train_val_pairs)):
+        for i, (model, (train_idx, val_idx)) in enumerate(zip(self.list_models[self.best_lam], self.train_val_pairs)):
+            a_train, b_train = a[train_idx,:], b[train_idx,:]
+            temp = model.si(a_train, b_train)
+            intervals = intersect(intervals, temp)
+            
             a_val, b_val = a[val_idx,:], b[val_idx,:]
                 
             p = model.p
@@ -201,10 +208,15 @@ class KFoldCV():
         for lam in self.list_lambda:
             if lam == self.best_lam:
                 continue
+
             r_a = 0
             r_b = 0
             r_c = 0
-            for i, (model, (_, val_idx)) in enumerate(zip(self.list_models[lam], self.train_val_pairs)):
+            for i, (model, (train_idx, val_idx)) in enumerate(zip(self.list_models[lam], self.train_val_pairs)):
+                a_train, b_train = a[train_idx,:], b[train_idx,:]
+                temp = model.si(a_train, b_train)
+                intervals = intersect(intervals, temp)
+                
                 a_val, b_val = a[val_idx,:], b[val_idx,:]
                 
                 p = model.p
@@ -225,10 +237,6 @@ class KFoldCV():
             sa = (l_b - r_b)[0,0]
             ta = (l_c - r_c)[0,0]
             temp = solve_quadratic_inequality(fa, sa, ta)
-            if not flag:
-                flag = True
-                intervals_2 = temp
-            else:
-                intervals_2 = intersect(intervals_2, temp)
+            intervals = intersect(intervals, temp)
 
-        return intersect(intervals_1, intervals_2)
+        return intervals

@@ -8,11 +8,12 @@ from si import utils, OTDA, KFoldCV, VanillaLasso
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-from multiprocessing import Pool
 import statsmodels.api as sm
 import scipy.stats 
 import json
 import re
+import time
+from multiprocessing import Pool
 
 def get_next_id(base_dir="exp"):
     """
@@ -49,7 +50,7 @@ def create_experiment_folder(base_dir="exp", config_data=None):
     return exp_dir
 
 ns, nt, p = 100, 10, 5
-Lambda = [2 ** x for x in range(-10, 11)]
+Lambda = [2 ** x for x in range(-5, 6)]
 Gamma = 1
 true_beta = 0
 model_name = "OT-KFoldCV-VanillaLasso"
@@ -106,24 +107,25 @@ def run(args):
         etajTSigmaetaj = (etaj.T @ Sigma @ etaj)[0][0]
         tn_sigma = np.sqrt(etajTSigmaetaj)
 
+        start = time.time()
         # Selective Inference
         a, b = utils.compute_a_b(y, etaj)
         intervals = si.fit(a, b, fs_model, cv_ins=cv_model, da_ins=da_model, zmin=-20*tn_sigma, zmax=20*tn_sigma)
         p_value = utils.p_value(intervals, etajTy, tn_sigma)
         with open(folder_path + '/p_values.txt', 'a') as f:
             f.write(f"{p_value}\n")
+        with open(folder_path + '/times.txt', 'a') as f:
+            f.write(f"{time.time()-start}\n")
         return p_value
     except Exception as e:
         print(f"\nError in run({k}): {e}")
         return None
 
 if __name__ == "__main__":
-    # run([1, 1])
     folder_path = create_experiment_folder(
         config_data={"ns": ns, "nt": nt, "p": p, "Lambda": Lambda, "Gamma": Gamma, "true_beta": true_beta, 
                      "method": "parametric", "model": model_name}
     )
-
     max_iter = 120
     alpha = 0.05
     cnt = 0
@@ -150,5 +152,4 @@ if __name__ == "__main__":
 
     plt.hist(list_p_values)
     plt.savefig(folder_path + '/p_value_hist.pdf')
-    # plt.show()
     plt.close()

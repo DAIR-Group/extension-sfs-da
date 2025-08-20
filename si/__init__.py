@@ -55,16 +55,16 @@ def divide_and_conquer(a, b, regr_ins, cv_ins, da_ins, zmin, zmax, unit, cp_mat)
                     M_v = [0] + M_v + [nt-1]
                 
                 if regr_model.is_empty():
-                    z += 1e-4
+                    z += 5e-4
                     continue
             
                 interval_regr = regr_model.si(a_tilde, b_tilde)            
                 interval_z = intersect(interval_da, interval_regr)
                 # with open("./debug.txt", "a") as f:
-                #     f.write(f'{interval_z}\t\t{z}\t\t{interval_da}\t\t{interval_regr}\t\t{M_v}\n')
+                #     f.write(f'{z}\t\t{interval_z}\t\t{interval_da}\t\t{interval_regr}\n')
                 list_intervals += interval_z
                 list_M += [M_v]
-                z = interval_z[0][1] + 1e-5
+                z = interval_z[0][1] + 5e-4
         
         return list_intervals, list_M
     else:
@@ -122,32 +122,20 @@ def divide_and_conquer(a, b, regr_ins, cv_ins, da_ins, zmin, zmax, unit, cp_mat)
                     # regr_model.check_KKT()
                     
                     if regr_model.is_empty():   
-                        z += 1e-4
+                        z += 5e-4
                         continue
                 
                     interval_regr = regr_model.si(a_tilde, b_tilde)
                     interval_z = intersect(interval_cv, interval_regr)
                     list_intervals += interval_z
                     list_M += [M_v]
-                    z = interval_z[0][1] + 1e-5
+                    z = interval_z[0][1] + 5e-4
                     # with open("./debug.txt", "a") as f:
-                        # f.write(f'{z}\t\t{interval_z}\n')
+                    #     f.write(f'{z}\t\t{interval_z}\n')
         return list_intervals, list_M
 
-def is_continuous_sublist(a, b):
-    a = np.array(a)
-    b = np.array(b)
-    if len(a) == 0:
-        return True
-    if len(a) > len(b):
-        return False
-    
-    from numpy.lib.stride_tricks import sliding_window_view
-    windows = sliding_window_view(b, len(a))
-    return np.any(np.all(windows == a, axis=1))
-
 def fit(a, b, regr_ins, cv_ins=None, da_ins=None, zmin=-20, zmax=20, 
-        min_condition=None, unit=None, cp_mat=None):
+        unit=None, cp_mat=None):
     
     list_intervals, list_M = divide_and_conquer(a, b, regr_ins, cv_ins, da_ins, zmin, zmax, unit, cp_mat)
     
@@ -155,13 +143,10 @@ def fit(a, b, regr_ins, cv_ins=None, da_ins=None, zmin=-20, zmax=20,
     if unit is not None:
         M_obs = list(dict.fromkeys(i // (unit+1) for i in regr_ins.active_set[1:-1]))
         M_obs = [0] + M_obs + [da_ins.nt-1]
-        for i in range(len(list_intervals)):
-            if np.array_equal(list_M[i], M_obs):
-                Z.append(list_intervals[i])
-        return Z
-    else:
+    else: 
         M_obs = regr_ins.active_set
-        for i in range(len(list_intervals)):
-            if np.array_equal(list_M[i], M_obs):
-                Z.append(list_intervals[i])
-        return Z
+
+    for i in range(len(list_intervals)):
+        if np.array_equal(list_M[i], M_obs):
+            Z.append(list_intervals[i])
+    return Z

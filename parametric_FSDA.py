@@ -8,11 +8,12 @@ from si import utils, OTDA, VanillaLasso
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-from multiprocessing import Pool
 import statsmodels.api as sm
 import scipy.stats 
 import json
 import re
+import time
+from multiprocessing import Pool
 
 def get_next_id(base_dir="exp"):
     """
@@ -101,19 +102,20 @@ def run(args):
         tn_sigma = np.sqrt(etajTSigmaetaj)
 
         # Selective Inference
+        start = time.time()
         a, b = utils.compute_a_b(y, etaj)
         intervals = si.fit(a, b, fs_model, da_ins=da_model, zmin=-20*tn_sigma, zmax=20*tn_sigma)
         p_value = utils.p_value(intervals, etajTy, tn_sigma)
         with open(folder_path + '/p_values.txt', 'a') as f:
             f.write(f"{p_value}\n")
+        with open(folder_path + '/times.txt', 'a') as f:
+            f.write(f"{time.time() - start}\n")
         return p_value
     except Exception as e:
         print(f"\nError in run({k}): {e}")
         return None
 
 if __name__ == "__main__":
-    # run([40, 0])
-
     folder_path = create_experiment_folder(
         config_data={"ns": ns, "nt": nt, "p": p, "Lambda": Lambda, "Gamma": Gamma, "true_beta": true_beta, 
                      "method": "parametric", "model": model_name}
@@ -145,5 +147,4 @@ if __name__ == "__main__":
 
     plt.hist(list_p_values)
     plt.savefig(folder_path + '/p_value_hist.pdf')
-    # plt.show()
     plt.close()

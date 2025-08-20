@@ -3,7 +3,7 @@ os.environ["MKL_NUM_THREADS"] = "1"
 os.environ["NUMEXPR_NUM_THREADS"] = "1" 
 os.environ["OMP_NUM_THREADS"] = "1" 
 
-from si import utils, OTDA, HoldOutCV, VanillaLasso
+from si import utils, OTDA, KFoldCV, VanillaLasso
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -18,7 +18,7 @@ def run(k):
         ns, nt, p = 100, 20, 5
 
         true_beta = np.full((p, 1), 0)
-        list_lambda = [2 ** x for x in range(-10, 11)]
+        list_lambda = [2 ** x for x in range(-5, 6)]
 
         Xs, ys, mu_s, Sigma_s = VanillaLasso.gen_data(ns, p, true_beta)
         Xt, yt, mu_t, Sigma_t = VanillaLasso.gen_data(nt, p, true_beta)
@@ -39,7 +39,7 @@ def run(k):
         y_tilde = Omega @ y
         
         # Tuning Lambda
-        cv = HoldOutCV(random_state=k)
+        cv = KFoldCV(random_state=k)
         cv.split(ns+nt)
         best_Lambda, _ = cv.fit(X_tilde, y_tilde, VanillaLasso, list_lambda)
         Gamma = 1
@@ -66,13 +66,9 @@ def run(k):
         # Selective Inference
         a, b = utils.compute_a_b(y, etaj)
         intervals_da = da_model.si(a, b)
-
         a_tilde, b_tilde = Omega @ a, Omega @ b
-
         intervals_cv = cv.si(a_tilde, b_tilde)
-
         intervals_fs = fs_model.si(a_tilde, b_tilde)
-
         intervals = utils.intersect(utils.intersect(intervals_da, intervals_cv), intervals_fs)
 
         res = utils.p_value(intervals, etajTy, tn_sigma)
@@ -84,7 +80,7 @@ def run(k):
         return None
 
 if __name__ == "__main__":
-    max_iter = 1200
+    max_iter = 120
     alpha = 0.05
     cnt = 0
 
