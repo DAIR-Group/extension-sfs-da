@@ -3,7 +3,7 @@ os.environ["MKL_NUM_THREADS"] = "1"
 os.environ["NUMEXPR_NUM_THREADS"] = "1" 
 os.environ["OMP_NUM_THREADS"] = "1" 
 
-from si import OTDA, VanillaLasso
+from si import OTDA, ElasticNet
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -12,16 +12,16 @@ import statsmodels.api as sm
 import scipy.stats
 
 def run(k):
-    # try:
+    try:
         # Generate target data
         np.random.seed(k)
-        ns, nt, p = 100, 20, 5
+        ns, nt, p = 100, 10, 5
         Lambda = 10
         Gamma = 1
         true_beta_s = np.full((p, 1), 2)
-        true_beta_t = np.full((p, 1), 0)
-        Xs, ys, mu_s, Sigma_s = VanillaLasso.gen_data(ns, p, true_beta_s)
-        Xt, yt, mu_t, Sigma_t = VanillaLasso.gen_data(nt, p, true_beta_t)
+        true_beta_t = np.full((p, 1), 0.5)
+        Xs, ys, mu_s, Sigma_s = ElasticNet.gen_data(ns, p, true_beta_s)
+        Xt, yt, mu_t, Sigma_t = ElasticNet.gen_data(nt, p, true_beta_t)
 
         X = np.vstack((Xs, Xt))
         y = np.vstack((ys, yt))
@@ -32,8 +32,8 @@ def run(k):
         # Data Splitting
         indices = np.arange(nt)
         np.random.shuffle(indices)
-        n_test = int(nt * 0.3)  # 30% test set
-        split_index = nt - n_test # 70% train
+        n_test = int(nt * 0.5)  # 50% test set
+        split_index = nt - n_test # 50% train
         Xt_train, yt_train = Xt[indices[:split_index]], yt[indices[:split_index]]
         Xt_test, _ = Xt[indices[split_index:]], yt[indices[split_index:]]
         
@@ -50,7 +50,7 @@ def run(k):
         y_tilde = Omega @ y_train
 
         hyperparams = {'Lambda': Lambda, 'Gamma': Gamma}
-        fs_model = VanillaLasso(X_tilde, y_tilde, **hyperparams)
+        fs_model = ElasticNet(X_tilde, y_tilde, **hyperparams)
         M = fs_model.fit()
         # fs_model.check_KKT()
         
@@ -72,12 +72,12 @@ def run(k):
         cdf = scipy.stats.norm.cdf(etajTy, loc=0, scale=tn_sigma)
         p_value = 2 * min(1 - cdf, cdf)
         return p_value
-    # except Exception as e:
-    #     print(f"\nError in run({k}): {e}")
-    #     return None
+    except Exception as e:
+        print(f"\nError in run({k}): {e}")
+        return None
 
 if __name__ == "__main__":    
-    max_iter = 120
+    max_iter = 200
     alpha = 0.05
     cnt = 0
 

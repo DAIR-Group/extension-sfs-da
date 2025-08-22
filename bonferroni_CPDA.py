@@ -93,7 +93,7 @@ def run(k):
         p_value = 2 * min(1 - cdf, cdf)
         
         # Bonferroni correction
-        p_value = max(1, p_value * (2**nt))
+        p_value = min(1, p_value * (2**nt))
         return p_value
     except Exception as e:
         print(f"\nError in run({k}): {e}")
