@@ -179,13 +179,17 @@ class FeatureSelectorBase(QuadraticProgramming):
 class ChangePointDetectorBase(QuadraticProgramming):
     def gen_data(n, delta, list_change_points):
         true_y = np.zeros(n)
-        sign = 1
-        list_change_points = [(start, end) for start, end in zip(list_change_points[:-1], list_change_points[1:])]
-        for change_point in list_change_points:
-            start = change_point[0]
-            end = change_point[1]
-            true_y[start:end] += sign * delta
-            sign = 1 - sign
+    
+        if len(list_change_points)==1:
+            true_y[list_change_points[0]:] += delta
+        elif len(list_change_points)>1:
+            segments = [(start, end) for start, end in zip(list_change_points[:-1], list_change_points[1:])]
+            sign = 1
+            for segment in segments:
+                start = segment[0]
+                end = segment[1]
+                true_y[start:end] += sign * delta
+                sign = 1 - sign
         
         y = true_y + np.random.normal(0, 1, n)
         return y.reshape(-1,1), true_y.reshape(-1,1), np.eye(n)

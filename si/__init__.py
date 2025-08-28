@@ -1,8 +1,6 @@
-from .da import OTDA
-from .cv import HoldOutCV, KFoldCV
-from .qp import VanillaLasso, ElasticNet, NNLS, FusedLasso
 from .utils import intersect
 import numpy as np
+# from numpy.lib.stride_tricks import sliding_window_view
 
 def divide_and_conquer(a, b, regr_ins, cv_ins, da_ins, zmin, zmax, unit, cp_mat):
     if cv_ins is None:
@@ -149,6 +147,34 @@ def fit(a, b, regr_ins, cv_ins=None, da_ins=None, zmin=-20, zmax=20,
     for i in range(len(list_intervals)):
         if np.array_equal(list_M[i], M_obs):
             Z.append(list_intervals[i])
-    print(f"Number of intervals: {len(Z)}")
-    print(f"Total intervals: {len(list_intervals)}")
+    # print(f"Number of intervals: {len(Z)}/{len(list_intervals)}")
     return Z
+
+# def is_continuous_sublist(a, b):
+#     a = np.array(a)
+#     b = np.array(b)
+#     if len(a) == 0:
+#         return True
+#     if len(a) > len(b):
+#         return False
+    
+#     windows = sliding_window_view(b, len(a))
+#     return np.any(np.all(windows == a, axis=1))
+
+# def fit2(a, b, regr_ins, cv_ins=None, da_ins=None, zmin=-20, zmax=20, 
+#         min_condition=None, unit=None, cp_mat=None):
+    
+#     list_intervals, list_M = divide_and_conquer(a, b, regr_ins, cv_ins, da_ins, zmin, zmax, unit, cp_mat)
+    
+#     Z = []
+#     if unit is not None:
+#         for i in range(len(list_intervals)):
+#             if is_continuous_sublist(min_condition, list_M[i]):
+#                 Z.append(list_intervals[i])
+#     else:
+#         M_obs = regr_ins.active_set
+#         for i in range(len(list_intervals)):
+#             if np.array_equal(list_M[i], M_obs):
+#                 Z.append(list_intervals[i])
+#     # print(f"Number of intervals: {len(Z)}/{len(list_intervals)}")
+#     return Z
