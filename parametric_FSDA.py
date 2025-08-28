@@ -4,7 +4,7 @@ os.environ["NUMEXPR_NUM_THREADS"] = "1"
 os.environ["OMP_NUM_THREADS"] = "1" 
 
 import si
-from si import utils, OTDA, ElasticNet
+from si import utils, OTDA, NNLS
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -53,7 +53,7 @@ ns, nt, p = 100, 10, 5
 Lambda = 10
 Gamma = 1
 true_beta = 2
-model_name = "OT-ElasticNet"
+model_name = "OT-NNLS"
 
 def run(args):
     k = args[0] 
@@ -62,9 +62,9 @@ def run(args):
         # Generate target data
         np.random.seed(k)
         true_beta_s = np.full((p, 1), 2)
-        Xs, ys, mu_s, Sigma_s = ElasticNet.gen_data(ns, p, true_beta_s)
+        Xs, ys, mu_s, Sigma_s = NNLS.gen_data(ns, p, true_beta_s)
         true_beta_t = np.full((p, 1), true_beta)
-        Xt, yt, mu_t, Sigma_t = ElasticNet.gen_data(nt, p, true_beta_t)
+        Xt, yt, mu_t, Sigma_t = NNLS.gen_data(nt, p, true_beta_t)
         
         X = np.vstack((Xs, Xt))
         y = np.vstack((ys, yt))
@@ -82,7 +82,7 @@ def run(args):
         y_tilde = Omega @ y
 
         hyperparams = {'Lambda': Lambda, 'Gamma': Gamma}
-        fs_model = ElasticNet(X_tilde, y_tilde, **hyperparams)
+        fs_model = NNLS(X_tilde, y_tilde, **hyperparams)
         M = fs_model.fit()
         # fs_model.check_KKT()
 

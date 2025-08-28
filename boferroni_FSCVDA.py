@@ -3,7 +3,7 @@ os.environ["MKL_NUM_THREADS"] = "1"
 os.environ["NUMEXPR_NUM_THREADS"] = "1" 
 os.environ["OMP_NUM_THREADS"] = "1" 
 
-from si import OTDA, HoldOutCV, VanillaLasso
+from si import OTDA, KFoldCV, VanillaLasso
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -15,10 +15,10 @@ def run(k):
     try:
         # Generate target data
         np.random.seed(k)
-        ns, nt, p = 100, 20, 5
+        ns, nt, p = 100, 10, 5
 
-        true_beta = np.full((p, 1), 0)
-        list_lambda = [2 ** x for x in range(-10, 11)]
+        true_beta = np.full((p, 1), 2)
+        list_lambda = [2 ** x for x in range(-5, 6)]
 
         Xs, ys, mu_s, Sigma_s = VanillaLasso.gen_data(ns, p, true_beta)
         Xt, yt, mu_t, Sigma_t = VanillaLasso.gen_data(nt, p, true_beta)
@@ -39,7 +39,7 @@ def run(k):
         y_tilde = Omega @ y
         
         # Tuning Lambda
-        cv = HoldOutCV(random_state=k)
+        cv = KFoldCV(random_state=k)
         cv.split(ns+nt)
         best_Lambda, _ = cv.fit(X_tilde, y_tilde, VanillaLasso, list_lambda)
         Gamma = 1
@@ -89,20 +89,20 @@ if __name__ == "__main__":
         if p_value <= alpha:
             cnt += 1
 
-    plt.hist(list_p_values)
-    # plt.savefig('./results/p_value_hist.pdf')
-    plt.show()
-    plt.close()
+    # plt.hist(list_p_values)
+    # # plt.savefig('./results/p_value_hist.pdf')
+    # plt.show()
+    # plt.close()
 
-    plt.rcParams.update({'font.size': 16})
-    grid = np.linspace(0, 1, 101)
-    plt.plot(grid, sm.distributions.ECDF(np.array(list_p_values))(grid), 'r-', linewidth=5, label='p-value')
-    plt.plot([0, 1], [0, 1], 'k--')
-    plt.legend()
-    plt.tight_layout()
-    # plt.savefig('./results/uniform_pivot.pdf')
-    plt.show()
-    plt.close()
+    # plt.rcParams.update({'font.size': 16})
+    # grid = np.linspace(0, 1, 101)
+    # plt.plot(grid, sm.distributions.ECDF(np.array(list_p_values))(grid), 'r-', linewidth=5, label='p-value')
+    # plt.plot([0, 1], [0, 1], 'k--')
+    # plt.legend()
+    # plt.tight_layout()
+    # # plt.savefig('./results/uniform_pivot.pdf')
+    # plt.show()
+    # plt.close()
 
     print("FPR:", cnt / len(list_p_values))
     print(f'KS-Test result: {scipy.stats.kstest(list_p_values, "uniform")[1]}')

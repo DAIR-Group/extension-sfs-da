@@ -15,9 +15,9 @@ def run(k):
     try:
         # Generate target data
         np.random.seed(k)
-        ns, nt, p = 100, 20, 5
+        ns, nt, p = 100, 10, 5
 
-        true_beta = np.full((p, 1), 0)
+        true_beta = np.full((p, 1), 2)
         list_lambda = [2 ** x for x in range(-5, 6)]
 
         Xs, ys, mu_s, Sigma_s = VanillaLasso.gen_data(ns, p, true_beta)
@@ -80,7 +80,7 @@ def run(k):
         return None
 
 if __name__ == "__main__":
-    max_iter = 120
+    max_iter = 1200
     alpha = 0.05
     cnt = 0
 
@@ -95,20 +95,20 @@ if __name__ == "__main__":
         if p_value <= alpha:
             cnt += 1
 
-    plt.hist(list_p_values)
-    # plt.savefig('./results/p_value_hist.pdf')
-    plt.show()
-    plt.close()
+    # plt.hist(list_p_values)
+    # # plt.savefig('./results/p_value_hist.pdf')
+    # plt.show()
+    # plt.close()
 
-    plt.rcParams.update({'font.size': 16})
-    grid = np.linspace(0, 1, 101)
-    plt.plot(grid, sm.distributions.ECDF(np.array(list_p_values))(grid), 'r-', linewidth=5, label='p-value')
-    plt.plot([0, 1], [0, 1], 'k--')
-    plt.legend()
-    plt.tight_layout()
-    # plt.savefig('./results/uniform_pivot.pdf')
-    plt.show()
-    plt.close()
+    # plt.rcParams.update({'font.size': 16})
+    # grid = np.linspace(0, 1, 101)
+    # plt.plot(grid, sm.distributions.ECDF(np.array(list_p_values))(grid), 'r-', linewidth=5, label='p-value')
+    # plt.plot([0, 1], [0, 1], 'k--')
+    # plt.legend()
+    # plt.tight_layout()
+    # # plt.savefig('./results/uniform_pivot.pdf')
+    # plt.show()
+    # plt.close()
 
     print("FPR:", cnt / len(list_p_values))
     print(f'KS-Test result: {scipy.stats.kstest(list_p_values, "uniform")[1]}')

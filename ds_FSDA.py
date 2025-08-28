@@ -3,7 +3,7 @@ os.environ["MKL_NUM_THREADS"] = "1"
 os.environ["NUMEXPR_NUM_THREADS"] = "1" 
 os.environ["OMP_NUM_THREADS"] = "1" 
 
-from si import OTDA, ElasticNet
+from si import OTDA, NNLS
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -20,8 +20,8 @@ def run(k):
         Gamma = 1
         true_beta_s = np.full((p, 1), 2)
         true_beta_t = np.full((p, 1), 0.5)
-        Xs, ys, mu_s, Sigma_s = ElasticNet.gen_data(ns, p, true_beta_s)
-        Xt, yt, mu_t, Sigma_t = ElasticNet.gen_data(nt, p, true_beta_t)
+        Xs, ys, mu_s, Sigma_s = NNLS.gen_data(ns, p, true_beta_s)
+        Xt, yt, mu_t, Sigma_t = NNLS.gen_data(nt, p, true_beta_t)
 
         X = np.vstack((Xs, Xt))
         y = np.vstack((ys, yt))
@@ -50,7 +50,7 @@ def run(k):
         y_tilde = Omega @ y_train
 
         hyperparams = {'Lambda': Lambda, 'Gamma': Gamma}
-        fs_model = ElasticNet(X_tilde, y_tilde, **hyperparams)
+        fs_model = NNLS(X_tilde, y_tilde, **hyperparams)
         M = fs_model.fit()
         # fs_model.check_KKT()
         
@@ -77,13 +77,13 @@ def run(k):
         return None
 
 if __name__ == "__main__":    
-    max_iter = 200
+    max_iter = 1200
     alpha = 0.05
     cnt = 0
 
     list_p_values = []
     with Pool() as pool:
-        list_result = list(tqdm(pool.imap_unordered(run, range(max_iter)), total=max_iter, desc="Iter"))
+        list_result = list(tqdm(pool.imap_unordered(run, range(0, max_iter*4, 4)), total=max_iter, desc="Iter"))
 
     for p_value in list_result:
         if p_value is None:
@@ -92,16 +92,16 @@ if __name__ == "__main__":
         if p_value <= alpha:
             cnt += 1
 
-    plt.hist(list_p_values)
-    plt.close()
+    # plt.hist(list_p_values)
+    # plt.close()
 
-    plt.rcParams.update({'font.size': 16})
-    grid = np.linspace(0, 1, 101)
-    plt.plot(grid, sm.distributions.ECDF(np.array(list_p_values))(grid), 'r-', linewidth=5, label='p-value')
-    plt.plot([0, 1], [0, 1], 'k--')
-    plt.legend()
-    plt.tight_layout()
-    plt.close()
+    # plt.rcParams.update({'font.size': 16})
+    # grid = np.linspace(0, 1, 101)
+    # plt.plot(grid, sm.distributions.ECDF(np.array(list_p_values))(grid), 'r-', linewidth=5, label='p-value')
+    # plt.plot([0, 1], [0, 1], 'k--')
+    # plt.legend()
+    # plt.tight_layout()
+    # plt.close()
 
     print("FPR:", cnt / len(list_p_values))
     print(f'KS-Test result: {scipy.stats.kstest(list_p_values, "uniform")[1]}')

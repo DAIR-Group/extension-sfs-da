@@ -52,7 +52,7 @@ def create_experiment_folder(base_dir="exp", config_data=None):
 nt = 10
 unit = 10
 Lambda = 10
-delta = 0
+delta = 6
 model_name = "OT-FusedLasso"
 
 def run(args):
@@ -61,11 +61,9 @@ def run(args):
     try:
         # Generate target data
         np.random.seed(k)
-        nt = 10
-        unit = 10
         ns = (nt-1) * unit 
         
-        list_change_points_t = [1, 3, 5, 7, 9]
+        list_change_points_t = [5]
         delta_t = delta
         yt, mu_t, Sigma_t = FusedLasso.gen_data(nt, delta_t, list_change_points_t)
         
@@ -154,7 +152,7 @@ if __name__ == "__main__":
                      "method": "parametric", "model": model_name}
     )
 
-    max_iter = 120
+    max_iter = 1200
     alpha = 0.05
     cnt = 0
 

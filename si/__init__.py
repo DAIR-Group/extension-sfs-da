@@ -149,4 +149,6 @@ def fit(a, b, regr_ins, cv_ins=None, da_ins=None, zmin=-20, zmax=20,
     for i in range(len(list_intervals)):
         if np.array_equal(list_M[i], M_obs):
             Z.append(list_intervals[i])
+    print(f"Number of intervals: {len(Z)}")
+    print(f"Total intervals: {len(list_intervals)}")
     return Z

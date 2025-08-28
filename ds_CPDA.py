@@ -19,8 +19,8 @@ def run(k):
         unit = 10
         ns = (nt-1) * unit 
         
-        list_change_points_t = [5]
-        delta = 1000
+        list_change_points_t = [1, 3, 5, 7, 9]
+        delta = 10
         delta_t = delta
         yt, mu_t, Sigma_t = FusedLasso.gen_data(nt, delta_t, list_change_points_t)
         
@@ -100,7 +100,7 @@ def run(k):
         return None
 
 if __name__ == "__main__":
-    max_iter = 1200
+    max_iter = 120
     alpha = 0.05
     cnt = 0
 
